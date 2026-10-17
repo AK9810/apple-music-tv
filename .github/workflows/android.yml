@@ -2,7 +2,10 @@ name: Android APK
 
 on:
   push:
-    branches: [ main ]
+    # `dev` builds produce download-only APK artifacts (Actions page) — the release
+    # publish steps below are gated on refs/heads/main, so the rolling dev release
+    # and the Beta channel are only ever fed by pushes to main.
+    branches: [ main, dev ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
