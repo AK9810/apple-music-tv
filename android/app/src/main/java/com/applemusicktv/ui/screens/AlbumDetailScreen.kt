@@ -18,6 +18,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -28,6 +29,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
+import com.applemusicktv.R
 import com.applemusicktv.data.model.Song
 import com.applemusicktv.ui.components.Glyph
 import com.applemusicktv.ui.components.Icon
@@ -107,10 +109,10 @@ fun AlbumDetailScreen(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    PillButton(Glyph.PLAY, "Play", Color(0xFFFA233B), Color(0xFFFF3B54)) {
+                    PillButton(Glyph.PLAY, stringResource(R.string.common_play), Color(0xFFFA233B), Color(0xFFFF3B54)) {
                         playerVm.playAlbum(state.tracks)
                     }
-                    PillButton(Glyph.SHUFFLE, "Shuffle", Color(0xFF2A2A2C), Color(0xFF3A3A3C)) {
+                    PillButton(Glyph.SHUFFLE, stringResource(R.string.common_shuffle), Color(0xFF2A2A2C), Color(0xFF3A3A3C)) {
                         playerVm.playAlbum(state.tracks.shuffled(), shuffle = true)
                     }
                 }

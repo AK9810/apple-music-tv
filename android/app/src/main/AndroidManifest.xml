@@ -15,11 +15,18 @@
     <application
         android:name=".AppleMusicApp"
         android:allowBackup="false"
-        android:label="Apple Music TV"
+        android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/banner"
+        android:localeConfig="@xml/locales_config"
         android:theme="@style/Theme.AppleMusicTV"
         android:usesCleartextTraffic="true">
+
+        <!-- Persist the in-app language choice on API 32 and below; from API 33 the system
+             stores per-app locales itself. Without this the choice resets on every launch. -->
+        <meta-data
+            android:name="androidx.appcompat.app.AppCompatDelegate.application_locales_auto_storage"
+            android:value="true" />
 
         <activity
             android:name=".MainActivity"

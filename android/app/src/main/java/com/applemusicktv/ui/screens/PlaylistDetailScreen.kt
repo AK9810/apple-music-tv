@@ -10,6 +10,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.annotation.StringRes
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -22,12 +23,14 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
+import com.applemusicktv.R
 import com.applemusicktv.data.model.Song
 import com.applemusicktv.ui.components.Glyph
 import com.applemusicktv.ui.components.Icon
@@ -130,7 +133,7 @@ fun PlaylistDetailScreen(
             if (state.curatorName.isNotEmpty())
                 Text(state.curatorName, fontSize = 15.sp, color = Color(0xFFFA233B), modifier = Modifier.padding(top = 4.dp))
             if (state.tracks.isNotEmpty())
-                Text("${state.tracks.size} songs", fontSize = 12.sp, color = Color(0xFF555555), modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.playlist_song_count, state.tracks.size), fontSize = 12.sp, color = Color(0xFF555555), modifier = Modifier.padding(top = 4.dp))
         }
 
         // Right panel — Play/Shuffle header + track list
@@ -140,7 +143,7 @@ fun PlaylistDetailScreen(
                     CircularProgressIndicator(color = Color(0xFFFA233B))
                 }
                 state.tracks.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text("No tracks", color = Color(0xFF555555), fontSize = 14.sp)
+                    Text(stringResource(R.string.playlist_no_tracks), color = Color(0xFF555555), fontSize = 14.sp)
                 }
                 else -> {
                     LazyColumn(
@@ -156,10 +159,10 @@ fun PlaylistDetailScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            PillButton(Glyph.PLAY, "Play", Color(0xFFFA233B), Color(0xFFFF3B54)) {
+                            PillButton(Glyph.PLAY, stringResource(R.string.common_play), Color(0xFFFA233B), Color(0xFFFF3B54)) {
                                 playerVm.playAlbum(sortedTracks, 0)   // mixed queue; videos route to the video player
                             }
-                            PillButton(Glyph.SHUFFLE, "Shuffle", Color(0xFF2A2A2C), Color(0xFF3A3A3C)) {
+                            PillButton(Glyph.SHUFFLE, stringResource(R.string.common_shuffle), Color(0xFF2A2A2C), Color(0xFF3A3A3C)) {
                                 playerVm.playAlbum(sortedTracks.shuffled(), 0, shuffle = true)
                             }
                             Spacer(Modifier.weight(1f))
@@ -224,8 +227,8 @@ fun PlaylistDetailScreen(
     } // outer Box
 }
 
-private enum class PlaylistSort(val label: String) {
-    DEFAULT("Default"), TITLE("Title"), ARTIST("Artist"), ALBUM("Album")
+private enum class PlaylistSort(@StringRes val labelRes: Int) {
+    DEFAULT(R.string.common_default), TITLE(R.string.common_title), ARTIST(R.string.common_artist), ALBUM(R.string.common_album)
 }
 
 /** Round sort button (right side of the header) — opens the sort popup. */
@@ -263,18 +266,18 @@ private fun PlaylistSortDialog(
             modifier = Modifier.width(340.dp),
         ) {
             Column(Modifier.padding(vertical = 18.dp)) {
-                Text("Sort By", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                Text(stringResource(R.string.common_sort_by), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White,
                     modifier = Modifier.padding(start = 22.dp, bottom = 10.dp))
                 PlaylistSort.entries.forEachIndexed { i, opt ->
-                    PlaylistSortRow(opt.label, opt == current,
+                    PlaylistSortRow(stringResource(opt.labelRes), opt == current,
                         modifier = if (i == 0) Modifier.focusRequester(firstFocus) else Modifier) {
                         onPick(opt, descending)
                     }
                 }
                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 22.dp)
                     .height(1.dp).background(Color(0xFF3A3A3C)))
-                PlaylistSortRow("Ascending", !descending) { onPick(current, false) }
-                PlaylistSortRow("Descending", descending) { onPick(current, true) }
+                PlaylistSortRow(stringResource(R.string.common_ascending), !descending) { onPick(current, false) }
+                PlaylistSortRow(stringResource(R.string.common_descending), descending) { onPick(current, true) }
             }
         }
         LaunchedEffect(Unit) { firstFocus.requestFocus() }

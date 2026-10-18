@@ -38,6 +38,9 @@ android {
         val proxyBaseUrl = localProps.getProperty("proxyBaseUrl") ?: "http://10.0.2.2:3000/"
         buildConfigField("String", "PROXY_BASE_URL", "\"$proxyBaseUrl\"")
         buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
+        // The app ships English + Simplified Chinese only — drop the dozens of locale
+        // translations that AndroidX libraries would otherwise pack into the APK.
+        resourceConfigurations += listOf("en", "zh")
     }
 
     buildFeatures {

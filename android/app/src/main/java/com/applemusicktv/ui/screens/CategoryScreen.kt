@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,6 +24,7 @@ import androidx.tv.material3.Text
 import androidx.tv.material3.Surface
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import com.applemusicktv.R
 import com.applemusicktv.data.model.Album
 import com.applemusicktv.ui.components.AlbumCard
 import com.applemusicktv.ui.viewmodel.CategoryViewModel
@@ -49,7 +51,7 @@ fun CategoryScreen(
                 CircularProgressIndicator(color = Color(0xFFFA233B))
             }
             state.error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("Couldn't load this category.", color = Color(0xFF888888), fontSize = 15.sp)
+                Text(stringResource(R.string.category_load_error), color = Color(0xFF888888), fontSize = 15.sp)
             }
             // contentPadding (not Modifier.padding) so a focused card's scaled border and
             // glow can bleed into the margin instead of being clipped at the edges.

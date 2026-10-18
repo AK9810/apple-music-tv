@@ -16,8 +16,11 @@ import androidx.media3.exoplayer.drm.FrameworkMediaDrm
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import com.applemusicktv.R
 import com.applemusicktv.media.AppleDirectClient
 import com.applemusicktv.media.AppleMusicDrmCallback
+import com.applemusicktv.util.AppLanguage
+import com.applemusicktv.util.UiString
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +37,8 @@ data class MvUiState(
     val loading:  Boolean = true,
     /** Mid-playback rebuffer (not the first load) — shows the same spinner. */
     val buffering: Boolean = false,
-    val error:    String? = null,
+    /** Resolved by the UI — see [UiString]. */
+    val error:    UiString? = null,
     val playing:  Boolean = false,
     /** User intent (playWhenReady=false) — distinct from `playing`, which also drops
      *  to false during a buffer. Only THIS drives the paused glyph. */
@@ -246,7 +250,7 @@ class MusicVideoViewModel @Inject constructor(
                 val bearer = appleClient.getBearer()
                 val mut = mutPrefs.getMUT()
                 if (bearer.isEmpty() || mut.isEmpty()) {
-                    _state.value = _state.value.copy(loading = false, error = "Sign-in required")
+                    _state.value = _state.value.copy(loading = false, error = UiString(R.string.mv_error_sign_in))
                     return@launch
                 }
                 // Use the prefetched result if the queue warmed this id ahead of time.
@@ -274,7 +278,7 @@ class MusicVideoViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 Log.e("AMMV", "MV load failed: ${e.message}", e)
-                _state.value = _state.value.copy(loading = false, error = e.message ?: "Failed to load video")
+                _state.value = _state.value.copy(loading = false, error = UiString(R.string.mv_error_load_failed))
             }
         }
     }
@@ -395,9 +399,10 @@ class MusicVideoViewModel @Inject constructor(
                                 Log.w("AMMV", "HDCP unavailable for ${failedAt}p → capping this session at ${lower}p")
                                 // Tell the user once why HD dropped — the display/HDMI link isn't
                                 // authenticating HDCP, so Apple blocks protected HD (not app-fixable).
+                                val resCtx = AppLanguage.localizedContext(context)
                                 android.widget.Toast.makeText(
-                                    context,
-                                    "HDCP Error — display link isn't protected, so HD is blocked. Playing ${lower}p.",
+                                    resCtx,
+                                    resCtx.getString(R.string.mv_hdcp_error, lower),
                                     android.widget.Toast.LENGTH_LONG,
                                 ).show()
                             } else {
@@ -407,14 +412,15 @@ class MusicVideoViewModel @Inject constructor(
                             playItem(curMvId!!, curTitle, curArtist)   // reload clamped to effHeight()
                             return
                         }
-                        _state.value = _state.value.copy(loading = false, error = error.message ?: "Playback failed")
+                        _state.value = _state.value.copy(loading = false, error = UiString(R.string.mv_error_playback_failed))
                     }
                     override fun onCues(cueGroup: androidx.media3.common.text.CueGroup) {
                         _cues.value = cueGroup.cues
                         Log.i("AMMVsub", "cues=${cueGroup.cues.size} text=${cueGroup.cues.firstOrNull()?.text}")
                     }
                     override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                        val subs = mutableListOf(SubtitleOption("Off", -1))
+                        val resCtx = AppLanguage.localizedContext(context)
+                        val subs = mutableListOf(SubtitleOption(resCtx.getString(R.string.mv_subtitles_off), -1))
                         var subSel = -1; var si = 0
                         val auds = mutableListOf<SubtitleOption>()
                         var audSel = 0; var ai = 0
@@ -422,13 +428,13 @@ class MusicVideoViewModel @Inject constructor(
                             when (group.type) {
                                 C.TRACK_TYPE_TEXT -> for (t in 0 until group.length) {
                                     val fmt = group.getTrackFormat(t)
-                                    subs.add(SubtitleOption(fmt.label ?: fmt.language?.uppercase() ?: "Subtitles", si))
+                                    subs.add(SubtitleOption(fmt.label ?: fmt.language?.uppercase() ?: resCtx.getString(R.string.mv_subtitles), si))
                                     if (group.isTrackSelected(t)) subSel = si
                                     si++
                                 }
                                 C.TRACK_TYPE_AUDIO -> for (t in 0 until group.length) {
                                     val fmt = group.getTrackFormat(t)
-                                    auds.add(SubtitleOption(langName(fmt.language) ?: fmt.label ?: "Audio ${ai + 1}", ai))
+                                    auds.add(SubtitleOption(langName(fmt.language) ?: fmt.label ?: resCtx.getString(R.string.mv_audio_track, ai + 1), ai))
                                     if (group.isTrackSelected(t)) audSel = ai
                                     ai++
                                 }

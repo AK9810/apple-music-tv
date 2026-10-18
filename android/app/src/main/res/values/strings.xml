@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Default (English) UI strings. Chinese lives in values-zh/strings.xml.
+    Naming: <screen>_<element>; shared words live under common_* and nav_*.
+    Format args use positional %1$s / %1$d so translations can reorder them.
+-->
+<resources>
+
+    <string name="app_name">Apple Music TV</string>
+
+    <!-- Navigation tabs -->
+    <string name="nav_listen_now">Listen Now</string>
+    <string name="nav_browse">Browse</string>
+    <string name="nav_library">Library</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_now_playing">Now Playing</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Shared -->
+    <string name="common_retry">Retry</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_continue">Continue</string>
+    <string name="common_back">Back</string>
+    <string name="common_done">Done</string>
+    <string name="common_play">Play</string>
+    <string name="common_pause">Pause</string>
+    <string name="common_shuffle">Shuffle</string>
+    <string name="common_play_next">Play Next</string>
+    <string name="common_add_to_queue">Add to Queue</string>
+    <string name="common_go_to_artist">Go to Artist</string>
+    <string name="common_go_to_album">Go to Album</string>
+    <string name="common_library">Library</string>
+    <string name="common_playlists">Playlists</string>
+    <string name="common_albums">Albums</string>
+    <string name="common_artists">Artists</string>
+    <string name="common_songs">Songs</string>
+    <string name="common_album">Album</string>
+    <string name="common_artist">Artist</string>
+
+    <!-- Language -->
+    <string name="lang_system">System default</string>
+    <string name="lang_english">English</string>
+    <string name="lang_chinese">中文</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_language">Language</string>
+    <string name="settings_language_label">App language</string>
+    <string name="settings_language_sub">Pick the interface language — applies immediately</string>
+
+    <!-- Settings: sections -->
+    <string name="settings_section_software">Software</string>
+    <string name="settings_section_playback">Playback</string>
+    <string name="settings_section_now_playing">Now Playing</string>
+    <string name="settings_section_remote">Remote</string>
+    <string name="settings_section_av_sync">A/V Sync</string>
+    <string name="settings_section_account">Account</string>
+    <string name="settings_section_connection">Connection</string>
+    <string name="settings_section_logs">Logs</string>
+    <string name="settings_section_bug_report">Bug Report</string>
+    <string name="settings_section_danger_zone">Danger Zone</string>
+
+    <!-- Settings: playback -->
+    <string name="settings_crossfade">Crossfade</string>
+    <string name="settings_crossfade_value">%1$.1fs</string>
+    <string name="settings_crossfade_sub">Overlap the end of one song into the next</string>
+    <string name="settings_standalone">Standalone playback</string>
+    <string name="settings_standalone_on">Decode on this device — no PC required</string>
+    <string name="settings_standalone_off">Stream through the PC server</string>
+    <string name="settings_volume_leveling">Volume leveling</string>
+    <string name="settings_volume_leveling_on">Even out loudness across tracks</string>
+    <string name="settings_volume_leveling_off">Play each track at its own level</string>
+    <string name="settings_background_play">Background play</string>
+    <string name="settings_background_play_on">Keep playing when you leave the app</string>
+    <string name="settings_background_play_off">Pause when the app goes to the background</string>
+
+    <!-- Settings: now playing -->
+    <string name="settings_background">Background</string>
+    <string name="settings_background_sub">Colour orbs, projector glow, or solid black</string>
+    <string name="settings_background_dynamic">Dynamic</string>
+    <string name="settings_background_projector">Projector</string>
+    <string name="settings_background_black">Black</string>
+    <string name="settings_show_info">Show info</string>
+    <string name="settings_show_info_on">Display the clock and panel hints</string>
+    <string name="settings_show_info_off">Hide them for an art-only view</string>
+    <string name="settings_intensity">Intensity</string>
+    <string name="settings_intensity_sub">How hard the background reacts to the beat</string>
+    <string name="settings_intensity_calm">Calm</string>
+    <string name="settings_intensity_normal">Normal</string>
+    <string name="settings_intensity_strong">Strong</string>
+    <string name="settings_intensity_crazy">Crazy</string>
+    <string name="settings_orb_speed">Orb speed</string>
+    <string name="settings_orb_speed_sub">How fast the orbs drift around</string>
+    <string name="settings_orb_slow">Slow</string>
+    <string name="settings_orb_fast">Fast</string>
+    <string name="settings_lyrics_size">Lyrics size</string>
+    <string name="settings_lyrics_size_sub">Text size in the lyrics panel</string>
+    <string name="settings_lyrics_small">Small</string>
+    <string name="settings_lyrics_large">Large</string>
+    <string name="settings_lyrics_huge">Huge</string>
+    <string name="settings_rounded_artwork">Rounded artwork</string>
+    <string name="settings_rounded_artwork_on">Soft rounded album-art corners</string>
+    <string name="settings_rounded_artwork_off">Square album-art corners</string>
+    <string name="settings_motion_artwork">Motion artwork</string>
+    <string name="settings_motion_artwork_on">Play animated album art when available</string>
+    <string name="settings_motion_artwork_off">Off — lighter on the device</string>
+    <string name="settings_reduce_motion">Reduce motion</string>
+    <string name="settings_reduce_motion_on">Background holds still</string>
+    <string name="settings_reduce_motion_off">Background drifts and pulses</string>
+    <string name="settings_low_power">Low Power Mode</string>
+    <string name="settings_low_power_on">Simpler visuals + frees the video decoder off Now Playing (tiny blip on return)</string>
+    <string name="settings_low_power_off">Full visuals + keeps video ready across tabs (seamless return)</string>
+    <string name="settings_screensaver">Screensaver</string>
+    <string name="settings_screensaver_sub">How long to wait before dimming the screen</string>
+    <string name="settings_screensaver_off">Off</string>
+    <string name="settings_value_min">%1$d min</string>
+    <string name="settings_value_hours">%1$d h</string>
+    <string name="settings_ambient_screensaver">Ambient screensaver</string>
+    <string name="settings_ambient_screensaver_on">Keep the moving background while dimmed</string>
+    <string name="settings_ambient_screensaver_off">Fade to plain black while dimmed</string>
+
+    <!-- Settings: remote -->
+    <string name="settings_remote_type">Remote type</string>
+    <string name="settings_remote_auto">Automatic</string>
+    <string name="settings_remote_fire">Fire TV</string>
+    <string name="settings_remote_google">Google TV</string>
+    <string name="settings_remote_sub">Google TV shows on-screen media + queue controls; Fire TV uses the Menu key</string>
+
+    <!-- Settings: A/V sync -->
+    <string name="settings_av_output">Output: %1$s</string>
+    <string name="settings_av_output_bt">Bluetooth · %1$s</string>
+    <string name="settings_av_output_bt_plain">Bluetooth</string>
+    <string name="settings_av_output_hdmi">HDMI / TV</string>
+    <string name="settings_av_bt_delay">Bluetooth delay applied: +350 ms (estimated)</string>
+    <string name="settings_av_standard">Standard timing</string>
+    <string name="settings_av_auto">Automatic</string>
+    <string name="settings_av_auto_on">Adds a Bluetooth estimate on top automatically</string>
+    <string name="settings_av_auto_off">Manual — only your extra below is added to the baseline</string>
+    <string name="settings_av_extra_offset">Extra offset</string>
+    <string name="settings_av_offset_value">%1$dms</string>
+    <string name="settings_av_extra_sub">Applies to lyrics, beat AND music-video lip-sync. Negative = earlier, positive = later</string>
+
+    <!-- Settings: dev menu -->
+    <string name="settings_hide_dev_menu">▾ Hide Dev Menu</string>
+    <string name="settings_open_dev_menu">▸ Open Dev Menu</string>
+    <string name="settings_bearer_token">Bearer token</string>
+    <string name="settings_bearer_refresh_hint">Refresh to scrape</string>
+    <string name="settings_status_active">Active</string>
+    <string name="settings_mut_set_at">Set %1$s</string>
+    <string name="settings_mut_set_via_phone">Set via phone web server</string>
+    <string name="settings_server_label">Server</string>
+    <string name="settings_server_reachable">Reachable</string>
+    <string name="settings_server_unreachable">Unreachable — standalone</string>
+    <string name="settings_recheck_server">Re-check Server</string>
+    <string name="common_refresh">Refresh</string>
+    <string name="settings_replay_setup">Replay Setup</string>
+    <string name="settings_clear_token">Clear Token</string>
+    <string name="settings_force_quit">Force Quit</string>
+    <string name="common_on">On</string>
+    <string name="common_off">Off</string>
+    <string name="common_clear">Clear</string>
+
+    <!-- Settings: connection -->
+    <string name="settings_phone_web_server">PHONE WEB SERVER</string>
+    <string name="settings_phone_server_hint">Open on phone → paste Music-User-Token</string>
+    <string name="settings_pc_server">PC SERVER</string>
+    <string name="settings_pc_ip_placeholder">192.168.x.x</string>
+    <string name="settings_pc_ip_press_edit">192.168.x.x — press to edit</string>
+    <string name="settings_pc_active">Active: %1$s:3000</string>
+
+    <!-- Settings: phone server / bug report -->
+    <string name="settings_bug_report_title">Bug report / logs</string>
+    <string name="settings_bug_report_open">On your phone open:</string>
+    <string name="settings_bug_report_desc">Downloads a text file with app version, device, the last crash and recent logs.</string>
+    <string name="settings_bug_report_wifi">Connect to Wi-Fi to expose the report page.</string>
+    <string name="settings_phone_server_title">Phone web server</string>
+    <string name="settings_phone_server_on">On — reachable on your network</string>
+    <string name="settings_phone_server_desc">Open on your phone to set the token and change settings:</string>
+    <string name="settings_phone_server_wifi">Connect to Wi-Fi to expose the phone page.</string>
+
+    <!-- Settings: reset -->
+    <string name="settings_reset_app">Reset App</string>
+    <string name="settings_reset_sub">Wipes token, pins &amp; settings, then restarts.</string>
+    <string name="settings_reset_dialog_title">Reset App?</string>
+    <string name="settings_reset_dialog_body">This erases your token, pins and all settings, then closes the app.</string>
+    <string name="settings_reset_confirm">Reset</string>
+
+    <!-- Settings: updates -->
+    <string name="settings_update_allow_installs">Allow installs from this app, then come back</string>
+    <string name="settings_update_checking_github">Checking GitHub…</string>
+    <string name="settings_update_latest">You\'re on the latest version</string>
+    <string name="settings_update_check_failed">Check failed — no connection?</string>
+    <string name="settings_app_version">App version</string>
+    <string name="settings_version_format">v%1$s (%2$d · %3$s)</string>
+    <string name="settings_update_checking">Checking…</string>
+    <string name="settings_check_updates">Check for Updates</string>
+    <string name="settings_beta_updates">Beta updates</string>
+    <string name="settings_beta_on">Includes prerelease builds</string>
+    <string name="settings_beta_off">Stable releases only</string>
+    <string name="settings_update_available">Update available: v%1$s</string>
+    <string name="settings_update_size">\u0020· %1$.1f MB</string>
+    <string name="settings_download_install">Download &amp; Install%1$s</string>
+    <string name="settings_update_download_failed">Download failed</string>
+    <string name="settings_update_downloading">Downloading… %1$d%%</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_sign_in_title">Sign in</string>
+    <string name="onboarding_sign_in_sub">Your Apple Music token is pasted from your phone — it\'s too long to type with a remote.</string>
+    <string name="onboarding_scan_or_open">On your phone, scan this or open:</string>
+    <string name="onboarding_web_starting">starting web server…</string>
+    <string name="onboarding_paste_token_hint">Paste your Music-User-Token there and this screen will continue on its own.</string>
+    <string name="onboarding_token_preset">You already have a token saved. Paste a new one to replace it, or just press Continue.</string>
+    <string name="onboarding_token_received">Token received.</string>
+    <string name="onboarding_token_waiting">Waiting for a token…</string>
+    <string name="onboarding_no_token_note">Without a token you get 30-second previews only.</string>
+    <string name="onboarding_skip_preview">Skip — preview only</string>
+    <string name="onboarding_start_listening">Start listening</string>
+    <string name="onboarding_see_all_tips">See all tips first</string>
+
+    <string name="onboarding_language_title">Language</string>
+    <string name="onboarding_language_sub">Choose the language for the app interface. You can change it later in Settings.</string>
+    <string name="onboarding_language_system_body">Follow the TV\'s system language.</string>
+    <string name="onboarding_language_english_body">English interface.</string>
+    <string name="onboarding_language_chinese_body">Simplified Chinese interface.</string>
+
+    <string name="onboarding_remote_title">Your remote</string>
+    <string name="onboarding_remote_sub">Detected: %1$s. Change it only if that\'s wrong.</string>
+    <string name="onboarding_detected_fire">Fire TV</string>
+    <string name="onboarding_detected_google">Google TV / other</string>
+    <string name="onboarding_remote_fire_title">Fire TV remote</string>
+    <string name="onboarding_remote_fire_body">Menu button opens the queue and lyrics.</string>
+    <string name="onboarding_remote_google_title">Google TV / other remote</string>
+    <string name="onboarding_remote_google_body">No Menu button — an on-screen list button is shown instead.</string>
+
+    <string name="onboarding_crossfade_title">Crossfade</string>
+    <string name="onboarding_crossfade_sub">How long tracks overlap. Songs from the same album hand off with no fade regardless.</string>
+    <string name="onboarding_crossfade_value">%1$.0f s</string>
+    <string name="onboarding_crossfade_note">Changeable any time from the ··· menu, or from the phone page you just used.</string>
+
+    <string name="onboarding_tips_title">How to use it</string>
+    <string name="onboarding_tips_sub">A few things you won\'t find on your own.</string>
+    <string name="onboarding_tip_long_press_title">Hold OK for more options</string>
+    <string name="onboarding_tip_long_press_body">On any song, album or playlist, keep OK pressed for a second. A menu opens — play next, add to queue, go to the artist. This is the big one; nothing on screen tells you it\'s there.</string>
+    <string name="onboarding_tip_lyrics_title_menu">The Menu button shows the words</string>
+    <string name="onboarding_tip_lyrics_title_button">The three-lines button shows the words</string>
+    <string name="onboarding_tip_lyrics_body_menu">The button with three lines on your remote. Press it to swap between synced lyrics and what\'s coming up next.</string>
+    <string name="onboarding_tip_lyrics_body_button">It sits next to play and skip. Press it to swap between synced lyrics and what\'s coming up next.</string>
+    <string name="onboarding_tip_scrub_title">Jump around inside a song</string>
+    <string name="onboarding_tip_scrub_body">Press down until the thin bar lights up. Left and right move 10 seconds at a time, OK jumps to that spot.</string>
+    <string name="onboarding_tip_dots_title">The ··· button is your settings</string>
+    <string name="onboarding_tip_dots_body">Sleep timer, shuffle, repeat, Full-Screen Lyrics, the ambient screensaver, Picture-in-Picture — all live here.</string>
+    <string name="onboarding_tip_projector_title">Projector mode — let the room breathe</string>
+    <string name="onboarding_tip_projector_body">An ambient mode: the lights go down to black and the album\'s own colours drift across the whole TV. No controls, no clutter — just the music, made a little bigger. Turn it on from the ··· menu and let it play.</string>
+    <string name="onboarding_tip_mv_title">Music videos, full-screen</string>
+    <string name="onboarding_tip_mv_body">Playlists and artist pages that carry videos play them full-screen, capped at 1080p and streamed as you watch — never fully downloaded. Look for the red MV tag, and use the ⧉ button to pop it into a corner while you browse.</string>
+    <string name="onboarding_tips_done_hint">All caught up — press down to start.</string>
+    <string name="onboarding_tips_more_hint">Use ‹ › to see the rest.</string>
+    <string name="onboarding_mock_10s">◄  10s  ►</string>
+    <string name="onboarding_mock_first_load">15–20s first time</string>
+
+    <!-- Shared Now Playing menu items (also used by the onboarding tip mocks) -->
+    <string name="menu_sleep_timer">Sleep Timer</string>
+    <string name="menu_repeat">Repeat</string>
+    <string name="menu_full_screen_lyrics">Full-Screen Lyrics</string>
+
+    <!-- App shell banners + exit dialog -->
+    <string name="appshell_token_expired">Token expired — re-enter at :8080</string>
+    <string name="appshell_previews">PLAYING PREVIEWS — set token at :8080</string>
+    <string name="appshell_exit_title">Exit Apple Music TV?</string>
+    <string name="appshell_exit_confirm">Exit</string>
+
+    <!-- Toasts (PlayerViewModel) -->
+    <string name="toast_high_memory">High memory usage on this device — playback may stutter</string>
+    <string name="toast_radio_stopped">Live radio stopped — reopen the station to restart</string>
+    <string name="toast_song_unavailable">\"%1$s\" isn\'t available any more</string>
+    <string name="toast_standalone_switched">On-device playback isn\'t working here — switched back to the server</string>
+    <string name="toast_standalone_failed">On-device playback failed — using the server</string>
+    <string name="toast_cant_play_skipping">Couldn\'t play \"%1$s\" — skipping</string>
+    <string name="toast_cant_reach_server">Can\'t reach the server</string>
+    <string name="toast_cant_play_no_server">Can\'t play \"%1$s\" on-device, and no server to fall back to</string>
+    <string name="toast_lost_connection">Lost connection to the server</string>
+    <string name="toast_server_online">Server back online</string>
+    <string name="toast_added_to_library">Added \"%1$s\" to Library</string>
+    <string name="toast_add_library_failed">Couldn\'t add to Library</string>
+    <string name="toast_added_to_playlist">Added to \"%1$s\"</string>
+    <string name="toast_add_playlist_failed">Couldn\'t add to playlist</string>
+    <string name="toast_station_failed">Can\'t start a station for \"%1$s\"</string>
+    <string name="toast_station_starting">Starting \"%1$s\" station</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel">Apple Music Alerts</string>
+    <string name="notif_channel_desc">Auth and service alerts</string>
+    <string name="notif_service_disruption_title">Apple Music — Service Disruption</string>
+    <string name="notif_service_disruption_body">Upstream issue detected (%1$s). Expect degraded performance.</string>
+    <string name="notif_token_expired_title">Action Required — Token Expired</string>
+    <string name="notif_token_expired_body">Your Apple Music session has ended. Visit %1$s to re-authenticate.</string>
+
+    <!-- Now Playing -->
+    <string name="np_nothing_playing">Nothing playing</string>
+    <string name="np_sleep_end_of_song">Sleep: end of song</string>
+    <string name="np_sleep_countdown">Sleep: %1$d:%2$s</string>
+    <string name="np_live">LIVE</string>
+    <string name="np_menu_cancel_timer">Cancel Timer</string>
+    <string name="np_menu_end_of_song">End of Song</string>
+    <string name="np_menu_minutes">%1$d minutes</string>
+    <string name="np_menu_sleep_end_of_song">Sleep: End of Song</string>
+    <string name="np_menu_sleep_left">Sleep Timer (%1$dm left)</string>
+    <string name="np_repeat_off">Repeat: Off</string>
+    <string name="np_repeat_all">Repeat: All</string>
+    <string name="np_repeat_one">Repeat: One</string>
+    <string name="np_menu_add_to">Add to…</string>
+    <string name="np_menu_start_screensaver">Start Screensaver</string>
+    <string name="np_panel_queue_lyrics">Queue  •  Menu = Lyrics</string>
+    <string name="np_panel_lyrics_queue">Lyrics  •  Menu = Queue</string>
+    <string name="np_panel_queue">Queue</string>
+    <string name="np_next_badge">NEXT</string>
+    <string name="np_up_next">Up Next</string>
+    <string name="np_hold_ok_drop">Hold OK to drop</string>
+    <string name="np_next_up">Next Up</string>
+    <string name="np_from_queue">From Queue</string>
+
+    <!-- Shared additions -->
+    <string name="common_add_to_library">Add to Library</string>
+    <string name="common_add_to_playlist">Add to Playlist</string>
+    <string name="common_sort_by">Sort By</string>
+    <string name="common_ascending">Ascending</string>
+    <string name="common_descending">Descending</string>
+    <string name="common_name">Name</string>
+    <string name="common_date_added">Date Added</string>
+    <string name="common_title">Title</string>
+    <string name="common_default">Default</string>
+    <string name="common_more">More</string>
+    <string name="common_no_content">No content available</string>
+    <string name="common_error_prefix">Error: %1$s</string>
+    <string name="error_could_not_connect">Could not connect to server</string>
+    <string name="add_to_no_playlists">No editable playlists</string>
+
+    <!-- Home -->
+    <string name="home_no_token">No content — set your Music User Token</string>
+
+    <!-- Library -->
+    <string name="library_sort_playlist_order">Playlist Order</string>
+    <string name="library_no_playlists">No playlists</string>
+    <string name="library_no_albums">No albums</string>
+    <string name="library_no_artists">No artists</string>
+    <string name="library_no_songs">No songs</string>
+    <string name="library_no_token_title">No Music User Token</string>
+    <string name="library_no_token_body">Open Dev tab → use web server on phone to add token</string>
+
+    <!-- Playlist detail -->
+    <string name="playlist_song_count">%1$d songs</string>
+    <string name="playlist_no_tracks">No tracks</string>
+
+    <!-- Artist detail -->
+    <string name="artist_section_top_songs">Top Songs</string>
+    <string name="artist_section_music_videos">Music Videos</string>
+    <string name="artist_section_latest_release">Latest Release</string>
+    <string name="artist_section_featured">Featured</string>
+    <string name="artist_section_similar">Similar Artists</string>
+    <string name="artist_station">Station</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Artists, albums, songs…</string>
+    <string name="search_box_hint">Search — press to type…</string>
+    <string name="search_top_results">Top Results</string>
+    <string name="search_categories">Categories</string>
+    <string name="search_recent">Recent</string>
+    <string name="search_more_to_explore">More to Explore</string>
+    <string name="search_start_typing">Start typing to search Apple Music</string>
+    <string name="search_badge_category">Category</string>
+    <string name="search_link_behind_songs">Behind the Songs</string>
+    <string name="search_link_charts">Charts</string>
+    <string name="search_link_browse_by_genre">Browse by Genre</string>
+    <string name="search_link_moods">Moods &amp; Activities</string>
+    <string name="search_link_decades">Decades</string>
+
+    <!-- Radio -->
+    <string name="radio_title">Radio</string>
+    <string name="radio_search_placeholder">Search stations…</string>
+    <string name="radio_country_placeholder">Country name…</string>
+    <string name="radio_showing">Showing %1$s</string>
+    <string name="radio_no_stations">No stations found</string>
+    <string name="radio_popular">Popular</string>
+    <string name="radio_go">Go</string>
+
+    <!-- Category / genre -->
+    <string name="category_load_error">Couldn\'t load this category.</string>
+    <string name="genre_load_error">Could not load genre</string>
+
+    <!-- Music video -->
+    <string name="mv_cant_play">Can\'t play this video</string>
+    <string name="mv_picker_audio">Audio</string>
+    <string name="mv_picker_quality">Quality</string>
+    <string name="mv_error_sign_in">Sign-in required</string>
+    <string name="mv_error_load_failed">Failed to load video</string>
+    <string name="mv_error_playback_failed">Playback failed</string>
+    <string name="mv_hdcp_error">HDCP Error — display link isn\'t protected, so HD is blocked. Playing %1$dp.</string>
+    <string name="mv_subtitles_off">Off</string>
+    <string name="mv_subtitles">Subtitles</string>
+    <string name="mv_audio_track">Audio %1$d</string>
+
+    <!-- Spotlight badges -->
+    <string name="spotlight_updated_playlist">UPDATED PLAYLIST</string>
+    <string name="spotlight_new_radio_show">NEW RADIO SHOW</string>
+    <string name="spotlight_new_song">NEW SONG</string>
+    <string name="spotlight_new_video">NEW VIDEO</string>
+    <string name="spotlight_new_album">NEW ALBUM</string>
+
+</resources>

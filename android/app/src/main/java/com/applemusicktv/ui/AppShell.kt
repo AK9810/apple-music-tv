@@ -15,6 +15,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,6 +25,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import com.applemusicktv.R
 import com.applemusicktv.ui.components.TopNavBar
 import com.applemusicktv.ui.navigation.Screen
 import com.applemusicktv.ui.navigation.TopNavTab
@@ -96,10 +98,11 @@ fun AppShell(modifier: Modifier = Modifier) {
 
     // Transient errors surface as a toast: a TV user is across the room and won't
     // find an inline banner, and silence reads as a crash.
-    val appContext = LocalContext.current.applicationContext
+    // Resolved with the Activity context so the chosen app language applies below API 33.
+    val uiContext = LocalContext.current
     LaunchedEffect(Unit) {
         playerVm.toasts.collect { msg ->
-            android.widget.Toast.makeText(appContext, msg, android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(uiContext, msg.resolve(uiContext), android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
@@ -430,7 +433,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                    androidx.compose.material3.Text("Token expired — re-enter at :8080", color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp)
+                    androidx.compose.material3.Text(stringResource(R.string.appshell_token_expired), color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp)
                     androidx.tv.material3.Surface(
                         onClick = { playerVm.dismissMutExpired() },
                         shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(androidx.compose.foundation.shape.RoundedCornerShape(50)),
@@ -451,7 +454,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                     .padding(horizontal = 14.dp, vertical = 6.dp),
             ) {
                 androidx.compose.material3.Text(
-                    "PLAYING PREVIEWS — set token at :8080",
+                    stringResource(R.string.appshell_previews),
                     color = androidx.compose.ui.graphics.Color.White,
                     fontSize = 11.sp,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
@@ -479,7 +482,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                     verticalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
                     androidx.compose.material3.Text(
-                        "Exit Apple Music TV?",
+                        stringResource(R.string.appshell_exit_title),
                         color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -495,7 +498,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                             ),
                         ) {
                             androidx.compose.material3.Text(
-                                "Cancel",
+                                stringResource(R.string.common_cancel),
                                 color = Color.White,
                                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
                             )
@@ -522,7 +525,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                             ),
                         ) {
                             androidx.compose.material3.Text(
-                                "Exit",
+                                stringResource(R.string.appshell_exit_confirm),
                                 color = Color.White,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
@@ -635,7 +638,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                         onFocusUp = { runCatching { navBarFocus.requestFocus() } },
                         onArtistClick = { navController.navigate(Screen.ArtistDetail.route(it)) },
                         // Google TV remotes lack media keys → draw prev/play/next on screen.
-                        showOnScreenControls = com.applemusicktv.util.TvDevice.needsOnScreenMenuToggle(appContext, playerVm.remoteOverride()),
+                        showOnScreenControls = com.applemusicktv.util.TvDevice.needsOnScreenMenuToggle(uiContext, playerVm.remoteOverride()),
                         queue = playerState.queue,
                         queueIndex = playerState.queueIndex,
                         onPickQueueItem = { playerVm.playFromQueue(it) },

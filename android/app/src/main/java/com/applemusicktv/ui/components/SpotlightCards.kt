@@ -17,12 +17,14 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
+import com.applemusicktv.R
 import com.applemusicktv.data.model.Album
 
 /** Parse Apple's bare-hex `artworkBgColor` ("1a2b3c") into an opaque Compose color. */
@@ -32,13 +34,14 @@ private fun bgColor(hex: String?, fallback: Long = 0xFF1A1A1E): Color {
 }
 
 /** The small uppercase label above a spotlight card, derived from the item type (Apple's own). */
+@Composable
 private fun spotlightLabel(album: Album): String = when {
     album.tagline?.isNotBlank() == true -> album.tagline!!.uppercase()
-    album.type == "playlists" -> "UPDATED PLAYLIST"
-    album.type == "stations" || album.id.startsWith("ra.") -> "NEW RADIO SHOW"
-    album.type == "songs" -> "NEW SONG"
-    album.type == "music-videos" -> "NEW VIDEO"
-    else -> "NEW ALBUM"
+    album.type == "playlists" -> stringResource(R.string.spotlight_updated_playlist)
+    album.type == "stations" || album.id.startsWith("ra.") -> stringResource(R.string.spotlight_new_radio_show)
+    album.type == "songs" -> stringResource(R.string.spotlight_new_song)
+    album.type == "music-videos" -> stringResource(R.string.spotlight_new_video)
+    else -> stringResource(R.string.spotlight_new_album)
 }
 
 /**

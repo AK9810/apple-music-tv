@@ -8,6 +8,7 @@ import com.applemusicktv.data.OnboardingPreferences
 import com.applemusicktv.data.ServerPreferences
 import com.applemusicktv.data.repository.MusicRepository
 import com.applemusicktv.media.InAppWebServer
+import com.applemusicktv.util.AppLanguage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,6 +32,13 @@ data class OnboardingState(
     val crossfadeMs:  Long         = CrossfadePreferences.DEFAULT_MS,
     /** A token was already stored when step 2 opened — don't skip past the screen. */
     val tokenPresetOnEntry: Boolean = false,
+    /** Currently selected UI language; kept in state so the step redraws on the way back. */
+    val language:     AppLanguage  = AppLanguage.SYSTEM,
+    /**
+     * The user finished setup on an older [OnboardingPreferences.CURRENT_VERSION]: walk them
+     * through the new language step only, then finish — not the whole flow again.
+     */
+    val returningUser: Boolean     = false,
 )
 
 @HiltViewModel
@@ -50,13 +58,16 @@ class OnboardingViewModel @Inject constructor(
             hasMut = mutPrefs.hasMUT(),
             crossfadeMs = crossfadePrefs.getDuration(),
             remoteChoice = onboarding.remoteOverride,
+            language = AppLanguage.current(),
+            returningUser = onboarding.completedVersion > 0 && !onboarding.completed,
         )
     )
     val state: StateFlow<OnboardingState> = _state
 
     private var mutPollJob: Job? = null
 
-    val totalSteps = 4
+    /** Five steps for a new user; a returning user only owes the language step. */
+    val totalSteps: Int get() = if (_state.value.returningUser) 1 else 5
 
     fun setIpDraft(v: String) = _state.update { it.copy(ipDraft = v, serverCheck = ServerCheck.Idle, serverError = null) }
 
@@ -129,6 +140,15 @@ class OnboardingViewModel @Inject constructor(
     fun setRemote(choice: String) {
         onboarding.remoteOverride = choice
         _state.update { it.copy(remoteChoice = choice) }
+    }
+
+    /**
+     * Applies immediately — AppCompat re-creates the activity, and this ViewModel (plus the
+     * chosen step) survives, so the rest of the wizard renders in the new language.
+     */
+    fun setLanguage(language: AppLanguage) {
+        AppLanguage.apply(language)
+        _state.update { it.copy(language = language) }
     }
 
     fun setCrossfade(ms: Long) {

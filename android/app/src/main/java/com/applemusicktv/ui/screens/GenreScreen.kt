@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,6 +22,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
+import com.applemusicktv.R
 import com.applemusicktv.data.model.Album
 import com.applemusicktv.data.model.Song
 import com.applemusicktv.data.repository.MusicRepository
@@ -91,10 +93,10 @@ fun GenreScreen(
         when {
             state.isLoading -> Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = Color(0xFFFA233B)) }
             state.error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("Could not load genre", color = Color(0xFFFF453A), fontSize = 14.sp)
+                Text(stringResource(R.string.genre_load_error), color = Color(0xFFFF453A), fontSize = 14.sp)
             }
             state.sections.isEmpty() -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("No content available", color = Color(0xFF555555), fontSize = 14.sp)
+                Text(stringResource(R.string.common_no_content), color = Color(0xFF555555), fontSize = 14.sp)
             }
             else -> LazyColumn(
                 contentPadding = PaddingValues(top = 8.dp, bottom = 102.dp),

@@ -8,11 +8,13 @@ import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import androidx.annotation.OptIn
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.applemusicktv.R
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -40,6 +42,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.applemusicktv.media.BeatAnalyzer
 import com.applemusicktv.media.BeatAwareRenderersFactory
+import com.applemusicktv.util.AppLanguage
+import com.applemusicktv.util.UiString
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -81,10 +85,10 @@ private const val CAPTURE_PCM = false
  *   beat — only size moves — so the black never pumps.
  * - [BLACK]: plain black, no blobs, no beat.
  */
-enum class NowPlayingBackground(val label: String) {
-    DYNAMIC("Dynamic"),
-    PROJECTOR("Projector"),
-    BLACK("Black"),
+enum class NowPlayingBackground(@StringRes val labelRes: Int) {
+    DYNAMIC(R.string.settings_background_dynamic),
+    PROJECTOR(R.string.settings_background_projector),
+    BLACK(R.string.settings_background_black),
     ;
 
     companion object {
@@ -123,8 +127,8 @@ data class PlayerState(
     val avOnBluetooth:    Boolean         = false,
     /** Total delay applied to the LYRIC clock: hidden 200 ms baseline (+ BT delta) + extra. */
     val avLyricsMs:       Long            = LYRICS_BASELINE_MS,
-    /** Human label for the current audio output. */
-    val avOutputLabel:    String          = "HDMI / TV",
+    /** Human label for the current audio output. Resolved by the UI — see [UiString]. */
+    val avOutput:         UiString        = UiString(R.string.settings_av_output_hdmi),
     val isShuffled:       Boolean         = false,
     val originalQueue:    List<Song>      = emptyList(),
     val repeatMode:       RepeatMode      = RepeatMode.Off,
@@ -228,9 +232,13 @@ class PlayerViewModel @Inject constructor(
      * One-off user-facing messages. extraBufferCapacity so an emit from the polling
      * thread never suspends, and replay=0 so a message doesn't re-fire on rotation.
      */
-    private val _toasts = MutableSharedFlow<String>(replay = 0, extraBufferCapacity = 4)
-    val toasts: SharedFlow<String> = _toasts
-    fun toast(msg: String) { _toasts.tryEmit(msg) }
+    private val _toasts = MutableSharedFlow<UiString>(replay = 0, extraBufferCapacity = 4)
+    val toasts: SharedFlow<UiString> = _toasts
+
+    /** Emits a toast by resource id — the UI resolves it with the Activity context. */
+    fun toast(@StringRes res: Int, vararg args: Any) {
+        _toasts.tryEmit(UiString(res, args.toList()))
+    }
 
     private var lastErrorKey: String? = null
     private var hasPlayedSomething = false
@@ -441,7 +449,7 @@ class PlayerViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         if ((mi.lowMemory || mi.availMem < mi.threshold * 2) && now - lastMemWarn > 60_000L) {
             lastMemWarn = now
-            toast("High memory usage on this device — playback may stutter")
+            toast(R.string.toast_high_memory)
         }
     }
 
@@ -521,9 +529,11 @@ class PlayerViewModel @Inject constructor(
         // Lyrics carry the hidden 200 ms display baseline on every output, plus the same BT delta.
         val lyricsMs = LYRICS_BASELINE_MS + btDelta + extra
         beatAnalyzer.latencyMs = beatMs
-        val label = if (onBt) "Bluetooth" + (btDev?.productName?.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "")
-                    else "HDMI / TV"
-        _state.update { it.copy(avOnBluetooth = onBt, avLyricsMs = lyricsMs, avOutputLabel = label) }
+        val output = if (!onBt) UiString(R.string.settings_av_output_hdmi)
+                     else btDev?.productName?.takeIf { it.isNotBlank() }
+                         ?.let { UiString(R.string.settings_av_output_bt, listOf(it)) }
+                         ?: UiString(R.string.settings_av_output_bt_plain)
+        _state.update { it.copy(avOnBluetooth = onBt, avLyricsMs = lyricsMs, avOutput = output) }
     }
 
     private val playerListener = object : Player.Listener {
@@ -649,7 +659,7 @@ class PlayerViewModel @Inject constructor(
                     radioActive = false   // force a fresh MediaCodec player in playLiveStation
                     viewModelScope.launch { kotlinx.coroutines.delay(800L * radioRecoveries); playLiveStation(sid) }
                 } else {
-                    toast("Live radio stopped — reopen the station to restart")
+                    toast(R.string.toast_radio_stopped)
                     _state.update { it.copy(isPlaying = false) }
                 }
                 return
@@ -668,7 +678,7 @@ class PlayerViewModel @Inject constructor(
                 val cur = _state.value.queue.getOrNull(_state.value.queueIndex)
                 if (cur != null) unavailableSongIds.add(cur.id)
                 webServer.addLog("ERR", "unavailable (404) song=$song — skipping, won't retry")
-                toast("\"$song\" isn't available any more")
+                toast(R.string.toast_song_unavailable, song)
                 advanceQueue()
                 return
             }
@@ -725,9 +735,9 @@ class PlayerViewModel @Inject constructor(
                 if (standaloneFailures >= 3 && standalonePrefs.isEnabled()) {
                     standalonePrefs.setEnabled(false)
                     webServer.addLog("PLR", "standalone disabled after $standaloneFailures failures")
-                    toast("On-device playback isn't working here — switched back to the server")
+                    toast(R.string.toast_standalone_switched)
                 } else {
-                    toast("On-device playback failed — using the server")
+                    toast(R.string.toast_standalone_failed)
                 }
                 val s = _state.value
                 val cur = s.queue.getOrNull(s.queueIndex)
@@ -744,8 +754,8 @@ class PlayerViewModel @Inject constructor(
                 _state.update { it.copy(isPlaying = true) }
             } else {
                 // Final give-up: neither standalone retry nor a 404 owned this — say why we skipped.
-                toast(if (serverPrefs.serverReachable) "Couldn't play \"$song\" — skipping"
-                      else "Can't reach the server")
+                if (serverPrefs.serverReachable) toast(R.string.toast_cant_play_skipping, song)
+                else toast(R.string.toast_cant_reach_server)
                 advanceQueue()
             }
         }
@@ -761,7 +771,7 @@ class PlayerViewModel @Inject constructor(
         _state.update { it.copy(standaloneActive = false) }
         if (!serverPrefs.serverReachable) {
             webServer.addLog("PLR", "on-device failed for $songTitle and no server — skipping")
-            toast("Can't play \"$songTitle\" on-device, and no server to fall back to")
+            toast(R.string.toast_cant_play_no_server, songTitle)
             advanceQueue()
             return
         }
@@ -769,9 +779,9 @@ class PlayerViewModel @Inject constructor(
         if (standaloneFailures >= 3 && standalonePrefs.isEnabled()) {
             standalonePrefs.setEnabled(false)
             webServer.addLog("PLR", "standalone disabled after $standaloneFailures failures")
-            toast("On-device playback isn't working here — switched back to the server")
+            toast(R.string.toast_standalone_switched)
         } else {
-            toast("On-device playback failed — using the server")
+            toast(R.string.toast_standalone_failed)
         }
         player.setMediaItem(buildMediaItem(cur, repo.streamUrl(cur.id)))
         player.prepare()
@@ -917,12 +927,12 @@ class PlayerViewModel @Inject constructor(
         // about losing/finding a connection we aren't using.
         val announce = !standalonePrefs.isEnabled()
         if (!up) {
-            if (!wasDown && announce) toast("Lost connection to the server")
+            if (!wasDown && announce) toast(R.string.toast_lost_connection)
             repo.prepareStandalone()
         } else if (wasDown) {
             // Recovered — reset standalone flag so next play uses proxy.
             usingStandalone = false
-            if (announce) toast("Server back online")
+            if (announce) toast(R.string.toast_server_online)
             Log.i("PlayerVM", "Server recovered — returning to proxy mode")
         }
     }
@@ -1422,8 +1432,8 @@ class PlayerViewModel @Inject constructor(
     // ── Library writes ──────────────────────────────────────────────────
     fun addToLibrary(song: com.applemusicktv.data.model.Song) = viewModelScope.launch {
         repo.addToLibrary(song)
-            .onSuccess { toast("Added \"${song.title}\" to Library") }
-            .onFailure { toast("Couldn't add to Library") }
+            .onSuccess { toast(R.string.toast_added_to_library, song.title) }
+            .onFailure { toast(R.string.toast_add_library_failed) }
     }
 
     /** Editable library playlists for the "Add to Playlist" picker. */
@@ -1431,8 +1441,8 @@ class PlayerViewModel @Inject constructor(
 
     fun addToPlaylist(playlistId: String, playlistName: String, song: com.applemusicktv.data.model.Song) = viewModelScope.launch {
         repo.addToPlaylist(playlistId, song)
-            .onSuccess { toast("Added to \"$playlistName\"") }
-            .onFailure { toast("Couldn't add to playlist") }
+            .onSuccess { toast(R.string.toast_added_to_playlist, playlistName) }
+            .onFailure { toast(R.string.toast_add_playlist_failed) }
     }
 
     fun playStation(stationId: String, stationArt: String? = null) {
@@ -1454,8 +1464,8 @@ class PlayerViewModel @Inject constructor(
         val catId = if (song.id.startsWith("i."))
             appleClient.resolveCatalogFor(song.id, mutPrefs.getMUT())
         else song.id.filter { it.isDigit() }.ifEmpty { song.id }
-        if (catId.isNullOrEmpty()) { toast("Can't start a station for \"${song.title}\""); return@launch }
-        toast("Starting \"${song.title}\" station")
+        if (catId.isNullOrEmpty()) { toast(R.string.toast_station_failed, song.title); return@launch }
+        toast(R.string.toast_station_starting, song.title)
         playStation("ra.$catId")
     }
 
@@ -2224,19 +2234,22 @@ class PlayerViewModel @Inject constructor(
                 .build()
         ).build()
 
-    fun showNotification(title: String, body: String, id: Int = 42) {
+    fun showNotification(title: UiString, body: UiString, id: Int = 42) {
+        // Posted outside any Activity, so resolve against a locale-aware context — the
+        // chosen app language isn't applied to application contexts below API 33.
+        val resCtx = AppLanguage.localizedContext(context)
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "am_alerts"
         if (nm.getNotificationChannel(channelId) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(channelId, "Apple Music Alerts", NotificationManager.IMPORTANCE_HIGH)
-                    .also { it.description = "Auth and service alerts" }
+                NotificationChannel(channelId, resCtx.getString(R.string.notif_channel), NotificationManager.IMPORTANCE_HIGH)
+                    .also { it.description = resCtx.getString(R.string.notif_channel_desc) }
             )
         }
         val notif = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
-            .setContentTitle(title)
-            .setContentText(body)
+            .setContentTitle(title.resolve(resCtx))
+            .setContentText(body.resolve(resCtx))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()
@@ -2252,8 +2265,8 @@ class PlayerViewModel @Inject constructor(
                 .ifEmpty { "Apple Music" }
             webServer.addLog("SVCMON", "Apple service issue detected — $affected")
             showNotification(
-                title = "Apple Music — Service Disruption",
-                body  = "Upstream issue detected ($affected). Expect degraded performance.",
+                title = UiString(R.string.notif_service_disruption_title),
+                body  = UiString(R.string.notif_service_disruption_body, listOf(affected)),
                 id    = 43,
             )
         }
@@ -2262,8 +2275,8 @@ class PlayerViewModel @Inject constructor(
     private fun showAuthNotification() {
         val url = webServer.serverUrl().replace(":8080", "").let { "$it:8080" }
         showNotification(
-            title = "Action Required — Token Expired",
-            body  = "Your Apple Music session has ended. Visit $url to re-authenticate.",
+            title = UiString(R.string.notif_token_expired_title),
+            body  = UiString(R.string.notif_token_expired_body, listOf(url)),
             id    = 42,
         )
     }

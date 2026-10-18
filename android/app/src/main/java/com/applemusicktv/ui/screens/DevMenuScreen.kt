@@ -24,11 +24,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.*
 import com.applemusicktv.BuildConfig
+import com.applemusicktv.R
 import com.applemusicktv.ui.viewmodel.DevMenuViewModel
+import com.applemusicktv.ui.viewmodel.NowPlayingBackground
 import com.applemusicktv.ui.viewmodel.PlayerViewModel
+import com.applemusicktv.util.AppLanguage
 import com.applemusicktv.util.UpdateChecker
 import com.applemusicktv.util.UpdateInfo
 import kotlinx.coroutines.launch
@@ -70,128 +74,139 @@ fun DevMenuScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("Settings", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(stringResource(R.string.settings_title), fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White)
+
+            // ── LANGUAGE ──────────────────────────────────────────────────
+            // Per-app locale. Applying it re-creates this activity; ViewModels and playback survive.
+            SectionLabel(stringResource(R.string.settings_section_language))
+            Stepper(
+                label = stringResource(R.string.settings_language_label),
+                value = stringResource(AppLanguage.current().labelRes),
+                sub = stringResource(R.string.settings_language_sub),
+                onDec = { AppLanguage.apply(AppLanguage.step(AppLanguage.current(), -1)) },
+                onInc = { AppLanguage.apply(AppLanguage.step(AppLanguage.current(), 1)) },
+            )
 
             // ── SOFTWARE ──────────────────────────────────────────────────
-            SectionLabel("Software")
+            SectionLabel(stringResource(R.string.settings_section_software))
             UpdatesSection(initialUpdate)
             PhoneServerRow(state.webServerUrl, playerVm)
 
             // ── PLAYBACK ──────────────────────────────────────────────────
-            SectionLabel("Playback")
+            SectionLabel(stringResource(R.string.settings_section_playback))
             Stepper(
-                label = "Crossfade", value = "%.1fs".format(state.crossfadeMs / 1000f),
-                sub = "Overlap the end of one song into the next",
+                label = stringResource(R.string.settings_crossfade),
+                value = stringResource(R.string.settings_crossfade_value, state.crossfadeMs / 1000f),
+                sub = stringResource(R.string.settings_crossfade_sub),
                 onDec = { vm.setCrossfade(state.crossfadeMs - 500) },
                 onInc = { vm.setCrossfade(state.crossfadeMs + 500) },
             )
             Toggle(
-                label = "Standalone playback", on = state.standaloneOn,
-                sub = if (state.standaloneOn) "Decode on this device — no PC required" else "Stream through the PC server",
+                label = stringResource(R.string.settings_standalone), on = state.standaloneOn,
+                sub = stringResource(if (state.standaloneOn) R.string.settings_standalone_on else R.string.settings_standalone_off),
                 onToggle = { vm.toggleStandalone() },
             )
             Toggle(
-                label = "Volume leveling", on = pstate.volumeLeveling,
-                sub = if (pstate.volumeLeveling) "Even out loudness across tracks" else "Play each track at its own level",
+                label = stringResource(R.string.settings_volume_leveling), on = pstate.volumeLeveling,
+                sub = stringResource(if (pstate.volumeLeveling) R.string.settings_volume_leveling_on else R.string.settings_volume_leveling_off),
                 onToggle = { playerVm.toggleVolumeLeveling() },
             )
             Toggle(
-                label = "Background play", on = pstate.backgroundPlayEnabled,
-                sub = if (pstate.backgroundPlayEnabled) "Keep playing when you leave the app" else "Pause when the app goes to the background",
+                label = stringResource(R.string.settings_background_play), on = pstate.backgroundPlayEnabled,
+                sub = stringResource(if (pstate.backgroundPlayEnabled) R.string.settings_background_play_on else R.string.settings_background_play_off),
                 onToggle = { playerVm.toggleBackgroundPlay() },
             )
 
             // ── NOW PLAYING ───────────────────────────────────────────────
-            SectionLabel("Now Playing")
+            SectionLabel(stringResource(R.string.settings_section_now_playing))
             Stepper(
-                label = "Background",
-                value = pstate.nowPlayingBackground.label,
-                sub = "Colour orbs, projector glow, or solid black",
+                label = stringResource(R.string.settings_background),
+                value = stringResource(pstate.nowPlayingBackground.labelRes),
+                sub = stringResource(R.string.settings_background_sub),
                 onDec = { playerVm.stepNowPlayingBackground(-1) },
                 onInc = { playerVm.stepNowPlayingBackground(1) },
             )
             Toggle(
-                label = "Show info", on = pstate.showNowPlayingInfo,
-                sub = if (pstate.showNowPlayingInfo) "Display the clock and panel hints" else "Hide them for an art-only view",
+                label = stringResource(R.string.settings_show_info), on = pstate.showNowPlayingInfo,
+                sub = stringResource(if (pstate.showNowPlayingInfo) R.string.settings_show_info_on else R.string.settings_show_info_off),
                 onToggle = { playerVm.toggleNowPlayingInfo() },
             )
             // Intensity is the orb SIZE/reactivity; hidden on Black (no orbs). Remembered per mode.
-            if (pstate.nowPlayingBackground.label != "Black") Stepper(
-                label = "Intensity",
+            if (pstate.nowPlayingBackground != NowPlayingBackground.BLACK) Stepper(
+                label = stringResource(R.string.settings_intensity),
                 value = intensityLabel(pstate.beatIntensity),
-                sub = "How hard the background reacts to the beat",
+                sub = stringResource(R.string.settings_intensity_sub),
                 onDec = { playerVm.stepBeatIntensity(-1) },
                 onInc = { playerVm.stepBeatIntensity(1) },
             )
             // Orb drift speed — only meaningful in Projector.
-            if (pstate.nowPlayingBackground.label == "Projector") Stepper(
-                label = "Orb speed",
+            if (pstate.nowPlayingBackground == NowPlayingBackground.PROJECTOR) Stepper(
+                label = stringResource(R.string.settings_orb_speed),
                 value = orbSpeedLabel(pstate.orbSpeed),
-                sub = "How fast the orbs drift around",
+                sub = stringResource(R.string.settings_orb_speed_sub),
                 onDec = { playerVm.stepOrbSpeed(-1) },
                 onInc = { playerVm.stepOrbSpeed(1) },
             )
             Stepper(
-                label = "Lyrics size",
+                label = stringResource(R.string.settings_lyrics_size),
                 value = lyricsScaleLabel(pstate.lyricsScale),
-                sub = "Text size in the lyrics panel",
+                sub = stringResource(R.string.settings_lyrics_size_sub),
                 onDec = { playerVm.stepLyricsScale(-1) },
                 onInc = { playerVm.stepLyricsScale(1) },
             )
             Toggle(
-                label = "Rounded artwork", on = pstate.artworkRounded,
-                sub = if (pstate.artworkRounded) "Soft rounded album-art corners" else "Square album-art corners",
+                label = stringResource(R.string.settings_rounded_artwork), on = pstate.artworkRounded,
+                sub = stringResource(if (pstate.artworkRounded) R.string.settings_rounded_artwork_on else R.string.settings_rounded_artwork_off),
                 onToggle = { playerVm.toggleArtworkRounded() },
             )
             Toggle(
-                label = "Motion artwork", on = pstate.motionArtworkEnabled,
-                sub = if (pstate.motionArtworkEnabled) "Play animated album art when available" else "Off — lighter on the device",
+                label = stringResource(R.string.settings_motion_artwork), on = pstate.motionArtworkEnabled,
+                sub = stringResource(if (pstate.motionArtworkEnabled) R.string.settings_motion_artwork_on else R.string.settings_motion_artwork_off),
                 onToggle = { playerVm.toggleMotionArtwork() },
             )
             Toggle(
-                label = "Reduce motion", on = pstate.reduceMotion,
-                sub = if (pstate.reduceMotion) "Background holds still" else "Background drifts and pulses",
+                label = stringResource(R.string.settings_reduce_motion), on = pstate.reduceMotion,
+                sub = stringResource(if (pstate.reduceMotion) R.string.settings_reduce_motion_on else R.string.settings_reduce_motion_off),
                 onToggle = { playerVm.toggleReduceMotion() },
             )
             Toggle(
-                label = "Low Power Mode", on = pstate.lowPowerMode,
-                sub = if (pstate.lowPowerMode) "Simpler visuals + frees the video decoder off Now Playing (tiny blip on return)"
-                      else "Full visuals + keeps video ready across tabs (seamless return)",
+                label = stringResource(R.string.settings_low_power), on = pstate.lowPowerMode,
+                sub = stringResource(if (pstate.lowPowerMode) R.string.settings_low_power_on else R.string.settings_low_power_off),
                 onToggle = { playerVm.toggleLowPowerMode() },
             )
             Stepper(
-                label = "Screensaver",
+                label = stringResource(R.string.settings_screensaver),
                 value = screensaverLabel(pstate.screensaverTimeoutMin),
-                sub = "How long to wait before dimming the screen",
+                sub = stringResource(R.string.settings_screensaver_sub),
                 onDec = { playerVm.stepScreensaverTimeout(-1) },
                 onInc = { playerVm.stepScreensaverTimeout(1) },
             )
             Toggle(
-                label = "Ambient screensaver", on = pstate.screensaverKeepBackground,
-                sub = if (pstate.screensaverKeepBackground) "Keep the moving background while dimmed" else "Fade to plain black while dimmed",
+                label = stringResource(R.string.settings_ambient_screensaver), on = pstate.screensaverKeepBackground,
+                sub = stringResource(if (pstate.screensaverKeepBackground) R.string.settings_ambient_screensaver_on else R.string.settings_ambient_screensaver_off),
                 onToggle = { playerVm.toggleScreensaverKeepBackground() },
             )
 
-            SectionLabel("Remote")
+            SectionLabel(stringResource(R.string.settings_section_remote))
             var remote by remember { mutableStateOf(playerVm.remoteOverride()) }
             val remoteOrder = listOf(
                 com.applemusicktv.data.OnboardingPreferences.REMOTE_AUTO,
                 com.applemusicktv.data.OnboardingPreferences.REMOTE_FIRE,
                 com.applemusicktv.data.OnboardingPreferences.REMOTE_GOOGLE,
             )
-            fun remoteLabel(v: String) = when (v) {
-                com.applemusicktv.data.OnboardingPreferences.REMOTE_FIRE -> "Fire TV"
-                com.applemusicktv.data.OnboardingPreferences.REMOTE_GOOGLE -> "Google TV"
-                else -> "Automatic"
+            fun remoteLabelRes(v: String) = when (v) {
+                com.applemusicktv.data.OnboardingPreferences.REMOTE_FIRE -> R.string.settings_remote_fire
+                com.applemusicktv.data.OnboardingPreferences.REMOTE_GOOGLE -> R.string.settings_remote_google
+                else -> R.string.settings_remote_auto
             }
             fun stepRemote(dir: Int) {
                 val i = (remoteOrder.indexOf(remote).coerceAtLeast(0) + dir + remoteOrder.size) % remoteOrder.size
                 remote = remoteOrder[i]; playerVm.setRemoteOverride(remote)
             }
             Stepper(
-                label = "Remote type",
-                value = remoteLabel(remote),
-                sub = "Google TV shows on-screen media + queue controls; Fire TV uses the Menu key",
+                label = stringResource(R.string.settings_remote_type),
+                value = stringResource(remoteLabelRes(remote)),
+                sub = stringResource(R.string.settings_remote_sub),
                 onDec = { stepRemote(-1) },
                 onInc = { stepRemote(1) },
             )
@@ -200,67 +215,81 @@ fun DevMenuScreen(
             // One delay drives both the beat visuals and the lyric clock. A ~200 ms display baseline is
             // built in (so this normally reads 0); Automatic adds a Bluetooth estimate on top when a BT
             // output is live. "Extra" is your own nudge on top of all that.
-            SectionLabel("A/V Sync")
+            SectionLabel(stringResource(R.string.settings_section_av_sync))
             Text(
-                "Output: ${pstate.avOutputLabel}",
+                stringResource(R.string.settings_av_output, pstate.avOutput.resolve(ctx)),
                 fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Medium,
             )
             Text(
-                if (pstate.avSyncAuto && pstate.avOnBluetooth) "Bluetooth delay applied: +350 ms (estimated)"
-                else "Standard timing",
+                if (pstate.avSyncAuto && pstate.avOnBluetooth) stringResource(R.string.settings_av_bt_delay)
+                else stringResource(R.string.settings_av_standard),
                 fontSize = 10.sp, color = Color(0xFF999999), modifier = Modifier.padding(bottom = 4.dp),
             )
             Toggle(
-                label = "Automatic",
+                label = stringResource(R.string.settings_av_auto),
                 on = pstate.avSyncAuto,
-                sub = if (pstate.avSyncAuto) "Adds a Bluetooth estimate on top automatically"
-                      else "Manual — only your extra below is added to the baseline",
+                sub = stringResource(if (pstate.avSyncAuto) R.string.settings_av_auto_on else R.string.settings_av_auto_off),
                 onToggle = { playerVm.setAvSyncAuto(!pstate.avSyncAuto) },
             )
             Stepper(
-                label = "Extra offset", value = "${state.lyricsOffsetMs}ms",
-                sub = "Applies to lyrics, beat AND music-video lip-sync. Negative = earlier, positive = later",
+                label = stringResource(R.string.settings_av_extra_offset),
+                value = stringResource(R.string.settings_av_offset_value, state.lyricsOffsetMs.toInt()),
+                sub = stringResource(R.string.settings_av_extra_sub),
                 onDec = { vm.setLyricsOffset(state.lyricsOffsetMs - 50) },
                 onInc = { vm.setLyricsOffset(state.lyricsOffsetMs + 50) },
             )
 
             Spacer(Modifier.height(6.dp))
             // ── Reveal dev menu ───────────────────────────────────────────
-            ActionBtn(if (showDev) "▾ Hide Dev Menu" else "▸ Open Dev Menu", Color(0xFF1C1C1E)) { showDev = !showDev }
+            ActionBtn(
+                if (showDev) stringResource(R.string.settings_hide_dev_menu) else stringResource(R.string.settings_open_dev_menu),
+                Color(0xFF1C1C1E),
+            ) { showDev = !showDev }
 
             if (showDev) {
-                SectionLabel("Account")
-                StatusChip("Bearer token", state.hasBearer, if (!state.hasBearer) "Refresh to scrape" else "Active")
-                StatusChip("Music-User-Token", state.hasMUT, state.mutSetAt?.let { "Set $it" } ?: if (!state.hasMUT) "Set via phone web server" else "Active")
-                StatusChip("Server", state.serverOk, if (state.serverOk) "Reachable" else "Unreachable — standalone")
+                SectionLabel(stringResource(R.string.settings_section_account))
+                StatusChip(
+                    stringResource(R.string.settings_bearer_token), state.hasBearer,
+                    if (!state.hasBearer) stringResource(R.string.settings_bearer_refresh_hint) else stringResource(R.string.settings_status_active),
+                )
+                StatusChip(
+                    "Music-User-Token", state.hasMUT,
+                    state.mutSetAt?.let { stringResource(R.string.settings_mut_set_at, it) }
+                        ?: if (!state.hasMUT) stringResource(R.string.settings_mut_set_via_phone)
+                        else stringResource(R.string.settings_status_active),
+                )
+                StatusChip(
+                    stringResource(R.string.settings_server_label), state.serverOk,
+                    if (state.serverOk) stringResource(R.string.settings_server_reachable) else stringResource(R.string.settings_server_unreachable),
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ActionBtn("Re-check Server", Color(0xFF1A2A1A), small = true) { vm.recheckServer(playerVm, onDone = onDataRefresh) }
-                    ActionBtn("Refresh", Color(0xFF2A2A2A), small = true) { vm.refresh(onDone = onDataRefresh) }
-                    ActionBtn("Replay Setup", Color(0xFF2A2A1A), small = true) { playerVm.resetOnboarding() }
-                    ActionBtn("Clear Token", Color(0xFF3A1A1A), small = true) { vm.clearMUT() }
+                    ActionBtn(stringResource(R.string.settings_recheck_server), Color(0xFF1A2A1A), small = true) { vm.recheckServer(playerVm, onDone = onDataRefresh) }
+                    ActionBtn(stringResource(R.string.common_refresh), Color(0xFF2A2A2A), small = true) { vm.refresh(onDone = onDataRefresh) }
+                    ActionBtn(stringResource(R.string.settings_replay_setup), Color(0xFF2A2A1A), small = true) { playerVm.resetOnboarding() }
+                    ActionBtn(stringResource(R.string.settings_clear_token), Color(0xFF3A1A1A), small = true) { vm.clearMUT() }
                     // Hard quit: stop playback + kill the process so the next launch is a true cold start.
-                    ActionBtn("Force Quit", Color(0xFF3A1A1A), small = true) {
+                    ActionBtn(stringResource(R.string.settings_force_quit), Color(0xFF3A1A1A), small = true) {
                         playerVm.stopPlayback()
                         android.os.Process.killProcess(android.os.Process.myPid())
                     }
                 }
 
-                SectionLabel("Connection")
+                SectionLabel(stringResource(R.string.settings_section_connection))
                 if (state.webServerUrl.isNotEmpty()) {
                     Column(
                         Modifier.fillMaxWidth().background(Color(0xFF0D1F0D), RoundedCornerShape(10.dp)).padding(14.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text("PHONE WEB SERVER", fontSize = 9.sp, color = Color(0xFF6BCB77), fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                        Text(stringResource(R.string.settings_phone_web_server), fontSize = 9.sp, color = Color(0xFF6BCB77), fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                         Text(state.webServerUrl, fontSize = 15.sp, color = Color.White, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold)
-                        Text("Open on phone → paste Music-User-Token", fontSize = 11.sp, color = Color(0xFF557755))
+                        Text(stringResource(R.string.settings_phone_server_hint), fontSize = 11.sp, color = Color(0xFF557755))
                     }
                 }
                 Column(
                     Modifier.fillMaxWidth().background(Color(0xFF1A1A1A), RoundedCornerShape(10.dp)).padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Text("PC SERVER", fontSize = 9.sp, color = Color(0xFF888888), fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                    Text(stringResource(R.string.settings_pc_server), fontSize = 9.sp, color = Color(0xFF888888), fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (pcIpEditing) {
                             // Editing: OK opened this, so the field may hold focus + IME. Done/Back closes.
@@ -277,12 +306,12 @@ fun DevMenuScreen(
                                     keyboardActions = KeyboardActions(onDone = { vm.setPcServerIp(pcIpDraft); pcIpEditing = false; hideIme() }),
                                     modifier = Modifier.fillMaxWidth().focusRequester(pcIpFocus),
                                     decorationBox = { inner ->
-                                        if (pcIpDraft.isEmpty()) Text("192.168.x.x", fontSize = 13.sp, color = Color(0xFF444444), fontFamily = FontFamily.Monospace)
+                                        if (pcIpDraft.isEmpty()) Text(stringResource(R.string.settings_pc_ip_placeholder), fontSize = 13.sp, color = Color(0xFF444444), fontFamily = FontFamily.Monospace)
                                         inner()
                                     },
                                 )
                             }
-                            ActionBtn("Done", Color(0xFF2A2A2A), small = true) { vm.setPcServerIp(pcIpDraft); pcIpEditing = false; hideIme() }
+                            ActionBtn(stringResource(R.string.common_done), Color(0xFF2A2A2A), small = true) { vm.setPcServerIp(pcIpDraft); pcIpEditing = false; hideIme() }
                         } else {
                             // Idle: a plain button. Focus can land here with no IME. OK opens the editor.
                             Surface(
@@ -292,23 +321,23 @@ fun DevMenuScreen(
                                 modifier = Modifier.weight(1f),
                             ) {
                                 Text(
-                                    pcIpDraft.ifEmpty { "192.168.x.x — press to edit" },
+                                    pcIpDraft.ifEmpty { stringResource(R.string.settings_pc_ip_press_edit) },
                                     fontSize = 13.sp, color = if (pcIpDraft.isEmpty()) Color(0xFF666666) else Color.White,
                                     fontFamily = FontFamily.Monospace,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
                                 )
                             }
                         }
-                        if (pcIpDraft.isNotEmpty()) ActionBtn("Clear", Color(0xFF3A1A1A), small = true) { pcIpDraft = ""; vm.setPcServerIp("") }
+                        if (pcIpDraft.isNotEmpty()) ActionBtn(stringResource(R.string.common_clear), Color(0xFF3A1A1A), small = true) { pcIpDraft = ""; vm.setPcServerIp("") }
                     }
                     if (state.pcServerIp.isNotEmpty())
-                        Text("Active: ${state.pcServerIp}:3000", fontSize = 10.sp, color = Color(0xFF6BCB77), fontFamily = FontFamily.Monospace)
+                        Text(stringResource(R.string.settings_pc_active, state.pcServerIp), fontSize = 10.sp, color = Color(0xFF6BCB77), fontFamily = FontFamily.Monospace)
                 }
 
                 // ── LOGS (app + network) ──────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SectionLabel("Logs")
-                    ActionBtn("Clear", Color(0xFF2A2A2A), small = true) { vm.clearLogs() }
+                    SectionLabel(stringResource(R.string.settings_section_logs))
+                    ActionBtn(stringResource(R.string.common_clear), Color(0xFF2A2A2A), small = true) { vm.clearLogs() }
                 }
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().height(300.dp)
@@ -328,12 +357,12 @@ fun DevMenuScreen(
                     }
                 }
 
-                SectionLabel("Bug Report")
+                SectionLabel(stringResource(R.string.settings_section_bug_report))
                 BugReportRow(state.webServerUrl)
 
-                SectionLabel("Danger Zone")
-                ActionBtn("Reset App", Color(0xFF4A1414)) { confirmReset = true }
-                Text("Wipes token, pins & settings, then restarts.", fontSize = 10.sp, color = Color(0xFF775555))
+                SectionLabel(stringResource(R.string.settings_section_danger_zone))
+                ActionBtn(stringResource(R.string.settings_reset_app), Color(0xFF4A1414)) { confirmReset = true }
+                Text(stringResource(R.string.settings_reset_sub), fontSize = 10.sp, color = Color(0xFF775555))
                 Spacer(Modifier.height(20.dp))
             }
         }
@@ -345,11 +374,11 @@ fun DevMenuScreen(
                 Modifier.width(360.dp).background(Color(0xFF1C1C1E), RoundedCornerShape(14.dp)).padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text("Reset App?", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("This erases your token, pins and all settings, then closes the app.", fontSize = 12.sp, color = Color(0xFF999999))
+                Text(stringResource(R.string.settings_reset_dialog_title), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(stringResource(R.string.settings_reset_dialog_body), fontSize = 12.sp, color = Color(0xFF999999))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ActionBtn("Cancel", Color(0xFF2A2A2A)) { confirmReset = false }
-                    ActionBtn("Reset", Color(0xFFB22222)) {
+                    ActionBtn(stringResource(R.string.common_cancel), Color(0xFF2A2A2A)) { confirmReset = false }
+                    ActionBtn(stringResource(R.string.settings_reset_confirm), Color(0xFFB22222)) {
                         val am = ctx.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
                         am.clearApplicationUserData()
                     }
@@ -368,8 +397,11 @@ private fun PhoneServerRow(webServerUrl: String, playerVm: PlayerViewModel) {
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Phone web server", fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.Medium)
-                Text(if (enabled) "On — reachable on your network" else "Off", fontSize = 10.sp, color = Color(0xFF777777))
+                Text(stringResource(R.string.settings_phone_server_title), fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                Text(
+                    if (enabled) stringResource(R.string.settings_phone_server_on) else stringResource(R.string.common_off),
+                    fontSize = 10.sp, color = Color(0xFF777777),
+                )
             }
             // Toggle to turn the :8080 page on/off (it's on by default).
             Surface(
@@ -380,16 +412,19 @@ private fun PhoneServerRow(webServerUrl: String, playerVm: PlayerViewModel) {
                     focusedContainerColor = if (enabled) Color(0xFF4AD866) else Color(0xFF5A5A5C),
                 ),
             ) {
-                Text(if (enabled) "On" else "Off", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+                Text(
+                    if (enabled) stringResource(R.string.common_on) else stringResource(R.string.common_off),
+                    color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
             }
         }
         if (enabled && webServerUrl.isNotEmpty()) {
-            Text("Open on your phone to set the token and change settings:", fontSize = 10.sp, color = Color(0xFF777777))
+            Text(stringResource(R.string.settings_phone_server_desc), fontSize = 10.sp, color = Color(0xFF777777))
             Text(webServerUrl, fontSize = 15.sp, color = Color(0xFF6BCB77),
                 fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold)
         } else if (enabled) {
-            Text("Connect to Wi-Fi to expose the phone page.", fontSize = 10.sp, color = Color(0xFF777777))
+            Text(stringResource(R.string.settings_phone_server_wifi), fontSize = 10.sp, color = Color(0xFF777777))
         }
     }
 }
@@ -400,15 +435,15 @@ private fun BugReportRow(webServerUrl: String) {
         Modifier.fillMaxWidth().background(Color(0xFF161618), RoundedCornerShape(10.dp)).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text("Bug report / logs", fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.Medium)
+        Text(stringResource(R.string.settings_bug_report_title), fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.Medium)
         if (webServerUrl.isNotEmpty()) {
-            Text("On your phone open:", fontSize = 10.sp, color = Color(0xFF777777))
+            Text(stringResource(R.string.settings_bug_report_open), fontSize = 10.sp, color = Color(0xFF777777))
             Text("$webServerUrl/report", fontSize = 13.sp, color = Color(0xFF6BCB77),
                 fontFamily = FontFamily.Monospace, fontWeight = FontWeight.SemiBold)
-            Text("Downloads a text file with app version, device, the last crash and recent logs.",
+            Text(stringResource(R.string.settings_bug_report_desc),
                 fontSize = 10.sp, color = Color(0xFF777777))
         } else {
-            Text("Connect to Wi-Fi to expose the report page.", fontSize = 10.sp, color = Color(0xFF777777))
+            Text(stringResource(R.string.settings_bug_report_wifi), fontSize = 10.sp, color = Color(0xFF777777))
         }
     }
 }
@@ -419,7 +454,8 @@ private fun UpdatesSection(initialUpdate: UpdateInfo? = null) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var checking by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf<String?>(null) }
+    // A string-resource id, not a formatted string: the language can change under this screen.
+    var status by remember { mutableStateOf<Int?>(null) }
     var update by remember { mutableStateOf(initialUpdate) }
     var progress by remember { mutableStateOf(-1f) } // -1 = not downloading
     var beta by remember { mutableStateOf(com.applemusicktv.util.UpdatePreferences.betaEnabled(ctx)) }
@@ -441,7 +477,7 @@ private fun UpdatesSection(initialUpdate: UpdateInfo? = null) {
         }
         // Park across a possible recreation: remember we owe an install, keep the APK on disk.
         prefs().edit().putBoolean("pending_install", true).apply()
-        status = "Allow installs from this app, then come back"
+        status = R.string.settings_update_allow_installs
         val pkgUri = android.net.Uri.parse("package:${ctx.packageName}")
         // The per-app screen isn't always present on Fire OS; fall back to the generic intent rather
         // than throwing ActivityNotFoundException at someone who was only trying to update.
@@ -472,14 +508,14 @@ private fun UpdatesSection(initialUpdate: UpdateInfo? = null) {
 
     fun runCheck() {
         if (checking) return
-        checking = true; status = "Checking GitHub…"; update = null
+        checking = true; status = R.string.settings_update_checking_github; update = null
         scope.launch {
             val res = UpdateChecker.check(beta)
             checking = false
             res.onSuccess { info ->
-                if (info == null) status = "You're on the latest version"
+                if (info == null) status = R.string.settings_update_latest
                 else { update = info; status = null }
-            }.onFailure { status = "Check failed — no connection?" }
+            }.onFailure { status = R.string.settings_update_check_failed }
         }
     }
 
@@ -489,21 +525,25 @@ private fun UpdatesSection(initialUpdate: UpdateInfo? = null) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("App version", fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                Text(stringResource(R.string.settings_app_version), fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.Medium)
                 Text(
-                    status ?: "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE} · ${BuildConfig.GIT_SHA})",
+                    status?.let { stringResource(it) }
+                        ?: stringResource(R.string.settings_version_format, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, BuildConfig.GIT_SHA),
                     fontSize = 10.sp, color = Color(0xFF777777), modifier = Modifier.padding(top = 2.dp),
                 )
             }
             if (update == null && progress < 0f) {
-                ActionBtn(if (checking) "Checking…" else "Check for Updates", Color(0xFF1C1C2E), small = true) { runCheck() }
+                ActionBtn(
+                    if (checking) stringResource(R.string.settings_update_checking) else stringResource(R.string.settings_check_updates),
+                    Color(0xFF1C1C2E), small = true,
+                ) { runCheck() }
             }
         }
 
         // Opt into prerelease builds. Re-checks immediately so the result reflects the channel.
         Toggle(
-            label = "Beta updates", on = beta,
-            sub = if (beta) "Includes prerelease builds" else "Stable releases only",
+            label = stringResource(R.string.settings_beta_updates), on = beta,
+            sub = stringResource(if (beta) R.string.settings_beta_on else R.string.settings_beta_off),
             onToggle = {
                 beta = !beta
                 com.applemusicktv.util.UpdatePreferences.setBeta(ctx, beta)
@@ -514,21 +554,21 @@ private fun UpdatesSection(initialUpdate: UpdateInfo? = null) {
         // An update is available → show version, notes and a download button.
         update?.let { info ->
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Update available: v${info.version}", fontSize = 13.sp, color = Color(0xFF6BCB77), fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.settings_update_available, info.version), fontSize = 13.sp, color = Color(0xFF6BCB77), fontWeight = FontWeight.SemiBold)
                 if (info.notes.isNotEmpty())
                     Text(info.notes.take(400), fontSize = 10.sp, color = Color(0xFF999999), lineHeight = 14.sp)
                 if (progress < 0f) {
-                    val mb = if (info.sizeBytes > 0) " · %.1f MB".format(info.sizeBytes / 1024f / 1024f) else ""
-                    ActionBtn("Download & Install$mb", Color(0xFF14351F)) {
+                    val mb = if (info.sizeBytes > 0) stringResource(R.string.settings_update_size, info.sizeBytes / 1024f / 1024f) else ""
+                    ActionBtn(stringResource(R.string.settings_download_install, mb), Color(0xFF14351F)) {
                         progress = 0f
                         scope.launch {
                             UpdateChecker.download(ctx, info) { progress = it }
                                 .onSuccess { apk -> progress = -1f; installOrRequestGrant(apk) }
-                                .onFailure { progress = -1f; status = "Download failed"; update = null }
+                                .onFailure { progress = -1f; status = R.string.settings_update_download_failed; update = null }
                         }
                     }
                 } else {
-                    Text("Downloading… ${(progress * 100).toInt()}%", fontSize = 12.sp, color = Color.White)
+                    Text(stringResource(R.string.settings_update_downloading, (progress * 100).toInt()), fontSize = 12.sp, color = Color.White)
                     Box(Modifier.fillMaxWidth().height(6.dp).background(Color(0xFF2A2A2C), RoundedCornerShape(50))) {
                         Box(Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).height(6.dp)
                             .background(Color(0xFFFA233B), RoundedCornerShape(50)))
@@ -540,25 +580,34 @@ private fun UpdatesSection(initialUpdate: UpdateInfo? = null) {
 }
 
 /** Calm / Normal / Strong / Crazy for the beat-reaction multiplier. */
-internal fun intensityLabel(f: Float): String = when {
-    f < 0.8f -> "Calm"
-    f < 1.5f -> "Normal"
-    f < 2.5f -> "Strong"
-    else     -> "Crazy"
-}
+@Composable
+internal fun intensityLabel(f: Float): String = stringResource(
+    when {
+        f < 0.8f -> R.string.settings_intensity_calm
+        f < 1.5f -> R.string.settings_intensity_normal
+        f < 2.5f -> R.string.settings_intensity_strong
+        else     -> R.string.settings_intensity_crazy
+    }
+)
 
-internal fun orbSpeedLabel(f: Float): String = when {
-    f < 0.85f -> "Slow"
-    f < 1.3f  -> "Normal"
-    else      -> "Fast"
-}
+@Composable
+internal fun orbSpeedLabel(f: Float): String = stringResource(
+    when {
+        f < 0.85f -> R.string.settings_orb_slow
+        f < 1.3f  -> R.string.settings_intensity_normal
+        else      -> R.string.settings_orb_fast
+    }
+)
 
-internal fun lyricsScaleLabel(f: Float): String = when {
-    f < 1.1f  -> "Small"
-    f < 1.4f  -> "Normal"
-    f < 1.8f  -> "Large"
-    else      -> "Huge"
-}
+@Composable
+internal fun lyricsScaleLabel(f: Float): String = stringResource(
+    when {
+        f < 1.1f -> R.string.settings_lyrics_small
+        f < 1.4f -> R.string.settings_intensity_normal
+        f < 1.8f -> R.string.settings_lyrics_large
+        else     -> R.string.settings_lyrics_huge
+    }
+)
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable

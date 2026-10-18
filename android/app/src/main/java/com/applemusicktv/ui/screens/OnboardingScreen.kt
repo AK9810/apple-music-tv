@@ -26,9 +26,12 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.*
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.ui.res.stringResource
+import com.applemusicktv.R
 import com.applemusicktv.data.CrossfadePreferences
 import com.applemusicktv.data.OnboardingPreferences
 import com.applemusicktv.ui.viewmodel.OnboardingViewModel
+import com.applemusicktv.util.AppLanguage
 import com.applemusicktv.util.QrCode
 import com.applemusicktv.util.TvDevice
 
@@ -62,7 +65,7 @@ fun OnboardingScreen(vm: OnboardingViewModel, onDone: () -> Unit, modifier: Modi
     val tipsNextFocus = remember { FocusRequester() }
     // Tips step gates the finish button: the user must page through every tip first.
     var tipsSeenAll by remember(s.step) { mutableStateOf(false) }
-    val onTipsStep = s.step >= vm.totalSteps
+    val onTipsStep = s.step == 5
     LaunchedEffect(s.step) {
         // The soft keyboard from the IP field stays on screen across a step change and
         // covers the next step, so tear it down before moving focus.
@@ -72,10 +75,10 @@ fun OnboardingScreen(vm: OnboardingViewModel, onDone: () -> Unit, modifier: Modi
         runCatching { if (onTipsStep) tipsNextFocus.requestFocus() else primaryFocus.requestFocus() }
     }
 
-    // Step 2 advances by itself when the token lands, so the user doesn't have to
+    // Step 2 (sign-in) advances by itself when the token lands, so the user doesn't have to
     // walk back to the TV after pasting on their phone.
     LaunchedEffect(s.step) {
-        if (s.step == 1) vm.startMutPolling() else vm.stopMutPolling()
+        if (s.step == 2) vm.startMutPolling() else vm.stopMutPolling()
     }
     DisposableEffect(Unit) { onDispose { vm.stopMutPolling() } }
 
@@ -109,9 +112,10 @@ fun OnboardingScreen(vm: OnboardingViewModel, onDone: () -> Unit, modifier: Modi
             ) { step ->
                 Column {
                     when (step) {
-                        1 -> StepAccount(vm, s)
-                        2 -> StepRemote(vm, s, TvDevice.isFireTv(context))
-                        3 -> StepPreferences(vm, s)
+                        1 -> StepLanguage(vm, s)
+                        2 -> StepAccount(vm, s)
+                        3 -> StepRemote(vm, s, TvDevice.isFireTv(context))
+                        4 -> StepPreferences(vm, s)
                         else -> StepTips(TvDevice.needsOnScreenMenuToggle(context, s.remoteChoice), tipsNextFocus) { tipsSeenAll = true }
                     }
                 }
@@ -120,47 +124,93 @@ fun OnboardingScreen(vm: OnboardingViewModel, onDone: () -> Unit, modifier: Modi
             Spacer(Modifier.weight(1f))
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (s.step > 1) OnbButton("Back", onClick = vm::back)
+                if (s.step > 1) OnbButton(stringResource(R.string.common_back), onClick = vm::back)
                 when (s.step) {
-                    1 -> OnbButton(if (s.hasMut) "Continue" else "Skip — preview only", primary = s.hasMut, modifier = Modifier.focusRequester(primaryFocus), onClick = vm::next)
-                    2, 3 -> OnbButton("Continue", primary = true, modifier = Modifier.focusRequester(primaryFocus), onClick = vm::next)
-                    else -> OnbButton(if (tipsSeenAll) "Start listening" else "See all tips first", primary = tipsSeenAll, enabled = tipsSeenAll, modifier = Modifier.focusRequester(primaryFocus)) { dismissKeyboard(); vm.finish(); onDone() }
+                    // A returning user only owes the language step — finishing it completes setup.
+                    1 -> OnbButton(
+                        if (s.returningUser) stringResource(R.string.common_done) else stringResource(R.string.common_continue),
+                        primary = true,
+                        modifier = Modifier.focusRequester(primaryFocus),
+                        onClick = {
+                            if (s.returningUser) { dismissKeyboard(); vm.finish(); onDone() } else vm.next()
+                        },
+                    )
+                    2 -> OnbButton(
+                        if (s.hasMut) stringResource(R.string.common_continue) else stringResource(R.string.onboarding_skip_preview),
+                        primary = s.hasMut,
+                        modifier = Modifier.focusRequester(primaryFocus),
+                        onClick = vm::next,
+                    )
+                    3, 4 -> OnbButton(stringResource(R.string.common_continue), primary = true, modifier = Modifier.focusRequester(primaryFocus), onClick = vm::next)
+                    else -> OnbButton(
+                        if (tipsSeenAll) stringResource(R.string.onboarding_start_listening) else stringResource(R.string.onboarding_see_all_tips),
+                        primary = tipsSeenAll, enabled = tipsSeenAll,
+                        modifier = Modifier.focusRequester(primaryFocus),
+                    ) { dismissKeyboard(); vm.finish(); onDone() }
                 }
             }
         }
     }
 }
 
+/**
+ * Step 1 — language. Options are the app's own labels (each language in its native name), so
+ * this screen is readable even before the user understands the current language. Picking one
+ * applies it immediately: AppCompat re-creates the activity and this screen comes back in it.
+ */
+@Composable
+private fun StepLanguage(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmodel.OnboardingState) {
+    StepHeader(
+        stringResource(R.string.onboarding_language_title),
+        stringResource(R.string.onboarding_language_sub),
+    )
+    Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        AppLanguage.entries.forEach { lang ->
+            RemoteOption(
+                title = stringResource(lang.labelRes),
+                body = stringResource(
+                    when (lang) {
+                        AppLanguage.SYSTEM -> R.string.onboarding_language_system_body
+                        AppLanguage.ENGLISH -> R.string.onboarding_language_english_body
+                        AppLanguage.CHINESE -> R.string.onboarding_language_chinese_body
+                    }
+                ),
+                selected = s.language == lang,
+            ) { vm.setLanguage(lang) }
+        }
+    }
+}
+
 @Composable
 private fun StepAccount(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmodel.OnboardingState) {
-    StepHeader("Sign in", "Your Apple Music token is pasted from your phone — it's too long to type with a remote.")
+    StepHeader(stringResource(R.string.onboarding_sign_in_title), stringResource(R.string.onboarding_sign_in_sub))
 
     Row(Modifier.padding(top = 22.dp), verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f)) {
-            Text("On your phone, scan this or open:", fontSize = 14.sp, color = Color(0xFF999999))
+            Text(stringResource(R.string.onboarding_scan_or_open), fontSize = 14.sp, color = Color(0xFF999999))
             Spacer(Modifier.height(8.dp))
             Text(
-                s.phoneUrl.ifEmpty { "starting web server…" },
+                s.phoneUrl.ifEmpty { stringResource(R.string.onboarding_web_starting) },
                 fontSize = 28.sp, fontWeight = FontWeight.Bold,
                 color = Color.White, fontFamily = FontFamily.Monospace,
             )
             Spacer(Modifier.height(18.dp))
             Text(
-                "Paste your Music-User-Token there and this screen will continue on its own.",
+                stringResource(R.string.onboarding_paste_token_hint),
                 fontSize = 14.sp, color = Color(0xFF888888),
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 when {
-                    s.hasMut && s.tokenPresetOnEntry -> "You already have a token saved. Paste a new one to replace it, or just press Continue."
-                    s.hasMut -> "Token received."
-                    else -> "Waiting for a token…"
+                    s.hasMut && s.tokenPresetOnEntry -> stringResource(R.string.onboarding_token_preset)
+                    s.hasMut -> stringResource(R.string.onboarding_token_received)
+                    else -> stringResource(R.string.onboarding_token_waiting)
                 },
                 fontSize = 14.sp,
                 color = if (s.hasMut) Color(0xFF6BCB77) else Color(0xFF666666),
             )
             Spacer(Modifier.height(18.dp))
-            Text("Without a token you get 30-second previews only.", fontSize = 12.sp, color = Color(0xFF555555))
+            Text(stringResource(R.string.onboarding_no_token_note), fontSize = 12.sp, color = Color(0xFF555555))
         }
 
         // QR of the same URL. Drawn on a white card with a quiet zone — a code that
@@ -196,18 +246,23 @@ private fun StepAccount(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmod
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun StepRemote(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmodel.OnboardingState, detectedFire: Boolean) {
-    val detectedLabel = if (detectedFire) "Fire TV" else "Google TV / other"
-    StepHeader("Your remote", "Detected: $detectedLabel. Change it only if that's wrong.")
+    val detectedLabel = stringResource(
+        if (detectedFire) R.string.onboarding_detected_fire else R.string.onboarding_detected_google
+    )
+    StepHeader(
+        stringResource(R.string.onboarding_remote_title),
+        stringResource(R.string.onboarding_remote_sub, detectedLabel),
+    )
 
     Column(Modifier.padding(top = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         RemoteOption(
-            "Fire TV remote", "Menu button opens the queue and lyrics.",
+            stringResource(R.string.onboarding_remote_fire_title), stringResource(R.string.onboarding_remote_fire_body),
             selected = s.remoteChoice == OnboardingPreferences.REMOTE_FIRE ||
                 (s.remoteChoice == OnboardingPreferences.REMOTE_AUTO && detectedFire),
         ) { vm.setRemote(OnboardingPreferences.REMOTE_FIRE) }
 
         RemoteOption(
-            "Google TV / other remote", "No Menu button — an on-screen list button is shown instead.",
+            stringResource(R.string.onboarding_remote_google_title), stringResource(R.string.onboarding_remote_google_body),
             selected = s.remoteChoice == OnboardingPreferences.REMOTE_GOOGLE ||
                 (s.remoteChoice == OnboardingPreferences.REMOTE_AUTO && !detectedFire),
         ) { vm.setRemote(OnboardingPreferences.REMOTE_GOOGLE) }
@@ -217,7 +272,10 @@ private fun StepRemote(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmode
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun StepPreferences(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmodel.OnboardingState) {
-    StepHeader("Crossfade", "How long tracks overlap. Songs from the same album hand off with no fade regardless.")
+    StepHeader(
+        stringResource(R.string.onboarding_crossfade_title),
+        stringResource(R.string.onboarding_crossfade_sub),
+    )
 
     Row(
         Modifier.padding(top = 24.dp),
@@ -226,7 +284,7 @@ private fun StepPreferences(vm: OnboardingViewModel, s: com.applemusicktv.ui.vie
     ) {
         OnbButton("−") { vm.setCrossfade(s.crossfadeMs - 1_000) }
         Text(
-            "%.0f s".format(s.crossfadeMs / 1000f),
+            stringResource(R.string.onboarding_crossfade_value, s.crossfadeMs / 1000f),
             fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Color.White,
             modifier = Modifier.width(90.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
@@ -234,7 +292,7 @@ private fun StepPreferences(vm: OnboardingViewModel, s: com.applemusicktv.ui.vie
     }
     Spacer(Modifier.height(16.dp))
     Text(
-        "Changeable any time from the ··· menu, or from the phone page you just used.",
+        stringResource(R.string.onboarding_crossfade_note),
         fontSize = 13.sp, color = Color(0xFF666666),
     )
 }
@@ -253,36 +311,39 @@ private data class TipCard(val mock: TipMock, val title: String, val body: Strin
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun StepTips(onScreenToggle: Boolean, nextFocus: FocusRequester, onSeenAll: () -> Unit) {
-    val cards = remember(onScreenToggle) {
-        listOf(
-            TipCard(
-                TipMock.LONG_PRESS, "Hold OK for more options",
-                "On any song, album or playlist, keep OK pressed for a second. A menu opens — play next, add to queue, go to the artist. This is the big one; nothing on screen tells you it's there.",
-            ),
-            TipCard(
-                TipMock.LYRICS,
-                if (onScreenToggle) "The three-lines button shows the words" else "The Menu button shows the words",
-                if (onScreenToggle) "It sits next to play and skip. Press it to swap between synced lyrics and what's coming up next."
-                else "The button with three lines on your remote. Press it to swap between synced lyrics and what's coming up next.",
-            ),
-            TipCard(
-                TipMock.SCRUB, "Jump around inside a song",
-                "Press down until the thin bar lights up. Left and right move 10 seconds at a time, OK jumps to that spot.",
-            ),
-            TipCard(
-                TipMock.DOTS_MENU, "The ··· button is your settings",
-                "Sleep timer, shuffle, repeat, Full-Screen Lyrics, the ambient screensaver, Picture-in-Picture — all live here.",
-            ),
-            TipCard(
-                TipMock.PROJECTOR, "Projector mode — let the room breathe",
-                "An ambient mode: the lights go down to black and the album's own colours drift across the whole TV. No controls, no clutter — just the music, made a little bigger. Turn it on from the ··· menu and let it play.",
-            ),
-            TipCard(
-                TipMock.MUSIC_VIDEO, "Music videos, full-screen",
-                "Playlists and artist pages that carry videos play them full-screen, capped at 1080p and streamed as you watch — never fully downloaded. Look for the red MV tag, and use the ⧉ button to pop it into a corner while you browse.",
-            ),
-        )
-    }
+    // Resolved every composition (cheap — six small objects) so copy follows a language change.
+    val cards = listOf(
+        TipCard(
+            TipMock.LONG_PRESS,
+            stringResource(R.string.onboarding_tip_long_press_title),
+            stringResource(R.string.onboarding_tip_long_press_body),
+        ),
+        TipCard(
+            TipMock.LYRICS,
+            stringResource(if (onScreenToggle) R.string.onboarding_tip_lyrics_title_button else R.string.onboarding_tip_lyrics_title_menu),
+            stringResource(if (onScreenToggle) R.string.onboarding_tip_lyrics_body_button else R.string.onboarding_tip_lyrics_body_menu),
+        ),
+        TipCard(
+            TipMock.SCRUB,
+            stringResource(R.string.onboarding_tip_scrub_title),
+            stringResource(R.string.onboarding_tip_scrub_body),
+        ),
+        TipCard(
+            TipMock.DOTS_MENU,
+            stringResource(R.string.onboarding_tip_dots_title),
+            stringResource(R.string.onboarding_tip_dots_body),
+        ),
+        TipCard(
+            TipMock.PROJECTOR,
+            stringResource(R.string.onboarding_tip_projector_title),
+            stringResource(R.string.onboarding_tip_projector_body),
+        ),
+        TipCard(
+            TipMock.MUSIC_VIDEO,
+            stringResource(R.string.onboarding_tip_mv_title),
+            stringResource(R.string.onboarding_tip_mv_body),
+        ),
+    )
 
     // Remote-driven: user pages through with the on-screen ‹ › buttons. The finish
     // button stays locked until every tip has been reached at least once.
@@ -307,7 +368,10 @@ private fun StepTips(onScreenToggle: Boolean, nextFocus: FocusRequester, onSeenA
             label = "tipPulseA",
         )
 
-    StepHeader("How to use it", "A few things you won't find on your own.")
+    StepHeader(
+        stringResource(R.string.onboarding_tips_title),
+        stringResource(R.string.onboarding_tips_sub),
+    )
 
     Row(Modifier.padding(top = 20.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         // The mock frame — cross-fades between features.
@@ -362,7 +426,8 @@ private fun StepTips(onScreenToggle: Boolean, nextFocus: FocusRequester, onSeenA
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                if (maxSeen >= cards.lastIndex) "All caught up — press down to start." else "Use ‹ › to see the rest.",
+                if (maxSeen >= cards.lastIndex) stringResource(R.string.onboarding_tips_done_hint)
+                else stringResource(R.string.onboarding_tips_more_hint),
                 fontSize = 12.sp, color = Color(0xFF666666),
             )
         }
@@ -484,7 +549,11 @@ private fun MockLongPress(pulse: Float) {
                 .padding(vertical = 6.dp, horizontal = 4.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            listOf("Play Next", "Add to Queue", "Go to Artist").forEachIndexed { i, t ->
+            listOf(
+                stringResource(R.string.common_play_next),
+                stringResource(R.string.common_add_to_queue),
+                stringResource(R.string.common_go_to_artist),
+            ).forEachIndexed { i, t ->
                 Text(
                     t, fontSize = 10.sp, color = if (i == 0) Color.White else Color(0xFFAAAAAA),
                     modifier = Modifier
@@ -571,7 +640,7 @@ private fun MockScrub(pulse: Float) {
             Text("−1:52", fontSize = 11.sp, color = Color(0xFF777777), fontFamily = FontFamily.Monospace)
         }
         Spacer(Modifier.height(10.dp))
-        Text("◄  10s  ►", fontSize = 12.sp, color = Color(0xFFAAAAAA), modifier = Modifier.align(Alignment.CenterHorizontally))
+        Text(stringResource(R.string.onboarding_mock_10s), fontSize = 12.sp, color = Color(0xFFAAAAAA), modifier = Modifier.align(Alignment.CenterHorizontally))
     }
 }
 
@@ -582,7 +651,12 @@ private fun MockDotsMenu(pulse: Float) {
         Text("···", fontSize = 16.sp, color = Color.White, fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.CenterHorizontally))
         Spacer(Modifier.height(2.dp))
-        listOf("Sleep Timer", "Shuffle", "Repeat", "Full-Screen Lyrics").forEachIndexed { i, t ->
+        listOf(
+            stringResource(R.string.menu_sleep_timer),
+            stringResource(R.string.common_shuffle),
+            stringResource(R.string.menu_repeat),
+            stringResource(R.string.menu_full_screen_lyrics),
+        ).forEachIndexed { i, t ->
             Row(
                 Modifier.fillMaxWidth()
                     .background(
@@ -621,7 +695,7 @@ private fun MockLoading(pulse: Float) {
             }
             MockCircle(50.dp, Color.White)
         }
-        Text("15–20s first time", fontSize = 11.sp, color = Color(0xFF888888),
+        Text(stringResource(R.string.onboarding_mock_first_load), fontSize = 11.sp, color = Color(0xFF888888),
             modifier = Modifier.align(Alignment.BottomCenter))
     }
 }

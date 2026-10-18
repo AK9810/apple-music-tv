@@ -31,11 +31,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.util.UnstableApi
 import androidx.tv.material3.Text
+import com.applemusicktv.R
 import com.applemusicktv.ui.viewmodel.MV_QUALITY_TIERS
 import com.applemusicktv.ui.viewmodel.MusicVideoViewModel
 import com.applemusicktv.ui.viewmodel.qualityLabel
@@ -188,9 +191,9 @@ fun MusicVideoScreen(
 
         if (state.error != null) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Can't play this video", color = Color(0xFFFF453A), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.mv_cant_play), color = Color(0xFFFF453A), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(6.dp))
-                Text(state.error ?: "", color = Color(0xFF888888), fontSize = 12.sp)
+                Text(state.error?.resolve(LocalContext.current) ?: "", color = Color(0xFF888888), fontSize = 12.sp)
             }
         }
 
@@ -291,7 +294,7 @@ fun MusicVideoScreen(
             Box(Modifier.fillMaxHeight().padding(14.dp).width(360.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xF21C1C1E)).padding(vertical = 22.dp)) {
                 LazyColumn(contentPadding = PaddingValues(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     item {
-                        Text("Up Next", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                        Text(stringResource(R.string.np_up_next), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold,
                             letterSpacing = (-0.3).sp, modifier = Modifier.padding(bottom = 14.dp))
                     }
                     itemsIndexed(queue) { i, song ->
@@ -325,7 +328,7 @@ fun MusicVideoScreen(
             exit = scaleOut(targetScale = 0.9f) + fadeOut(),
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 52.dp, bottom = 190.dp),
         ) {
-            val title = if (picker == MvPicker.AUDIO) "Audio" else "Quality"
+            val title = if (picker == MvPicker.AUDIO) stringResource(R.string.mv_picker_audio) else stringResource(R.string.mv_picker_quality)
             Box(Modifier.width(230.dp).clip(RoundedCornerShape(18.dp)).background(Color(0xF21C1C1E)).padding(vertical = 10.dp)) {
                 Column {
                     Text(title, color = Color(0x99FFFFFF), fontSize = 12.sp, fontWeight = FontWeight.SemiBold,

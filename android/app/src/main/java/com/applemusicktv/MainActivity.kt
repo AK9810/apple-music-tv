@@ -13,9 +13,9 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Rational
 import android.view.KeyEvent
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.applemusicktv.ui.AppShell
 import com.applemusicktv.ui.viewmodel.MusicVideoViewModel
@@ -26,8 +26,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+// AppCompatActivity (not ComponentActivity) is load-bearing for per-app language: below
+// API 33 AppCompatDelegate only re-creates AppCompat-hosted activities when the locale
+// changes, so the UI flips language instantly on Fire TV instead of after a restart.
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val navVm: NavigationViewModel by viewModels()
     private val playerVm: PlayerViewModel by viewModels()
@@ -57,7 +60,8 @@ class MainActivity : ComponentActivity() {
             this,
             if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
         )
-        val label = if (playing) "Pause" else "Play"
+        // PiP remote-action label (activity context, so per-app language applies).
+        val label = if (playing) getString(R.string.common_pause) else getString(R.string.common_play)
         val pi = PendingIntent.getBroadcast(
             this, 0,
             Intent(pipActionName).setPackage(packageName),

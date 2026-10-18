@@ -16,12 +16,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
+import com.applemusicktv.R
 import com.applemusicktv.data.model.Album
 import com.applemusicktv.data.model.Song
 import com.applemusicktv.ui.components.AlbumCard
@@ -47,7 +49,7 @@ fun ArtistDetailScreen(
     }
     if (state.error != null) {
         Box(modifier.fillMaxSize().background(Color(0xFF080808)), Alignment.Center) {
-            Text("Error: ${state.error}", color = Color(0xFFFF3B30), fontSize = 14.sp)
+            Text(stringResource(R.string.common_error_prefix, state.error ?: ""), color = Color(0xFFFF3B30), fontSize = 14.sp)
         }
         return
     }
@@ -92,12 +94,12 @@ fun ArtistDetailScreen(
 
         // Top songs
         if (state.topSongs.isNotEmpty()) {
-            item { SectionTitle("Top Songs") }
+            item { SectionTitle(stringResource(R.string.artist_section_top_songs)) }
             item {
                 Row(Modifier.padding(start = 48.dp, end = 48.dp, bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PillButton(com.applemusicktv.ui.components.Glyph.PLAY, "Play", Color(0xFFFA233B), Color(0xFFFF3B54)) { playerVm.playAlbum(state.topSongs, 0) }
-                    PillButton(com.applemusicktv.ui.components.Glyph.SHUFFLE, "Shuffle", Color(0xFF2A2A2C), Color(0xFF3A3A3C)) { playerVm.playAlbum(state.topSongs.shuffled(), 0) }
-                    PillButton(com.applemusicktv.ui.components.Glyph.RADIO, "Station", Color(0xFF2A2A2C), Color(0xFF3A3A3C)) { vm.playStation { songs -> playerVm.playAlbum(songs, 0) } }
+                    PillButton(com.applemusicktv.ui.components.Glyph.PLAY, stringResource(R.string.common_play), Color(0xFFFA233B), Color(0xFFFF3B54)) { playerVm.playAlbum(state.topSongs, 0) }
+                    PillButton(com.applemusicktv.ui.components.Glyph.SHUFFLE, stringResource(R.string.common_shuffle), Color(0xFF2A2A2C), Color(0xFF3A3A3C)) { playerVm.playAlbum(state.topSongs.shuffled(), 0) }
+                    PillButton(com.applemusicktv.ui.components.Glyph.RADIO, stringResource(R.string.artist_station), Color(0xFF2A2A2C), Color(0xFF3A3A3C)) { vm.playStation { songs -> playerVm.playAlbum(songs, 0) } }
                 }
             }
             itemsIndexedTopSongs(state.topSongs, playerVm)
@@ -105,7 +107,7 @@ fun ArtistDetailScreen(
 
         // Music Videos (Essentials) — 16:9 thumbnails, play via the MV path.
         if (state.musicVideos.isNotEmpty()) {
-            item { SectionTitle("Music Videos") }
+            item { SectionTitle(stringResource(R.string.artist_section_music_videos)) }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 48.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     itemsIndexed(state.musicVideos, key = { _, v -> v.id }) { i, v ->
@@ -116,7 +118,7 @@ fun ArtistDetailScreen(
         }
 
         state.latestRelease?.let { latest ->
-            item { SectionTitle("Latest Release") }
+            item { SectionTitle(stringResource(R.string.artist_section_latest_release)) }
             item {
                 Box(Modifier.padding(horizontal = 48.dp, vertical = 8.dp)) {
                     AlbumCard(album = latest, size = 180, onClick = { onAlbumClick(latest.id) })
@@ -125,16 +127,16 @@ fun ArtistDetailScreen(
         }
 
         if (state.albums.isNotEmpty()) {
-            item { SectionTitle("Albums") }
+            item { SectionTitle(stringResource(R.string.common_albums)) }
             item { AlbumRow(state.albums, onAlbumClick) }
         }
         if (state.featuredAlbums.isNotEmpty()) {
-            item { SectionTitle("Featured") }
+            item { SectionTitle(stringResource(R.string.artist_section_featured)) }
             item { AlbumRow(state.featuredAlbums, onAlbumClick) }
         }
 
         if (state.similarArtists.isNotEmpty()) {
-            item { SectionTitle("Similar Artists") }
+            item { SectionTitle(stringResource(R.string.artist_section_similar)) }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 48.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                     items(state.similarArtists, key = { it.id }) { a ->

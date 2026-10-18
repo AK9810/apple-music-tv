@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simplified Chinese UI strings. Term names follow Apple Music zh-CN conventions. -->
+<resources>
+
+    <string name="app_name">Apple Music TV</string>
+
+    <!-- Navigation tabs -->
+    <string name="nav_listen_now">立即聆听</string>
+    <string name="nav_browse">浏览</string>
+    <string name="nav_library">资料库</string>
+    <string name="nav_search">搜索</string>
+    <string name="nav_now_playing">正在播放</string>
+    <string name="nav_settings">设置</string>
+
+    <!-- Shared -->
+    <string name="common_retry">重试</string>
+    <string name="common_cancel">取消</string>
+    <string name="common_continue">继续</string>
+    <string name="common_back">返回</string>
+    <string name="common_done">完成</string>
+    <string name="common_play">播放</string>
+    <string name="common_pause">暂停</string>
+    <string name="common_shuffle">随机播放</string>
+    <string name="common_play_next">接着播放</string>
+    <string name="common_add_to_queue">添加到播放队列</string>
+    <string name="common_go_to_artist">前往艺人</string>
+    <string name="common_go_to_album">前往专辑</string>
+    <string name="common_library">资料库</string>
+    <string name="common_playlists">播放列表</string>
+    <string name="common_albums">专辑</string>
+    <string name="common_artists">艺人</string>
+    <string name="common_songs">歌曲</string>
+    <string name="common_album">专辑</string>
+    <string name="common_artist">艺人</string>
+
+    <!-- Language -->
+    <string name="lang_system">跟随系统</string>
+    <string name="lang_english">English</string>
+    <string name="lang_chinese">中文</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_section_language">语言</string>
+    <string name="settings_language_label">界面语言</string>
+    <string name="settings_language_sub">选择界面语言，立即生效</string>
+
+    <!-- Settings: sections -->
+    <string name="settings_section_software">软件</string>
+    <string name="settings_section_playback">播放</string>
+    <string name="settings_section_now_playing">正在播放</string>
+    <string name="settings_section_remote">遥控器</string>
+    <string name="settings_section_av_sync">音画同步</string>
+    <string name="settings_section_account">账户</string>
+    <string name="settings_section_connection">连接</string>
+    <string name="settings_section_logs">日志</string>
+    <string name="settings_section_bug_report">问题报告</string>
+    <string name="settings_section_danger_zone">危险区域</string>
+
+    <!-- Settings: playback -->
+    <string name="settings_crossfade">交叉淡入淡出</string>
+    <string name="settings_crossfade_value">%1$.1f 秒</string>
+    <string name="settings_crossfade_sub">让一首歌的结尾与下一首重叠</string>
+    <string name="settings_standalone">本地独立播放</string>
+    <string name="settings_standalone_on">在本机解码，无需电脑</string>
+    <string name="settings_standalone_off">通过电脑服务器串流</string>
+    <string name="settings_volume_leveling">音量均衡</string>
+    <string name="settings_volume_leveling_on">统一各曲目的响度</string>
+    <string name="settings_volume_leveling_off">按各曲目的原始音量播放</string>
+    <string name="settings_background_play">后台播放</string>
+    <string name="settings_background_play_on">离开应用时继续播放</string>
+    <string name="settings_background_play_off">应用进入后台时暂停</string>
+
+    <!-- Settings: now playing -->
+    <string name="settings_background">背景</string>
+    <string name="settings_background_sub">彩色光球、投影光晕或纯黑</string>
+    <string name="settings_background_dynamic">动态</string>
+    <string name="settings_background_projector">投影</string>
+    <string name="settings_background_black">纯黑</string>
+    <string name="settings_show_info">显示信息</string>
+    <string name="settings_show_info_on">显示时钟和面板提示</string>
+    <string name="settings_show_info_off">隐藏以获得纯封面视图</string>
+    <string name="settings_intensity">强度</string>
+    <string name="settings_intensity_sub">背景随节拍反应的强度</string>
+    <string name="settings_intensity_calm">平静</string>
+    <string name="settings_intensity_normal">正常</string>
+    <string name="settings_intensity_strong">强烈</string>
+    <string name="settings_intensity_crazy">狂热</string>
+    <string name="settings_orb_speed">光球速度</string>
+    <string name="settings_orb_speed_sub">光球漂移的快慢</string>
+    <string name="settings_orb_slow">慢</string>
+    <string name="settings_orb_fast">快</string>
+    <string name="settings_lyrics_size">歌词大小</string>
+    <string name="settings_lyrics_size_sub">歌词面板中的文字大小</string>
+    <string name="settings_lyrics_small">小</string>
+    <string name="settings_lyrics_large">大</string>
+    <string name="settings_lyrics_huge">超大</string>
+    <string name="settings_rounded_artwork">圆角封面</string>
+    <string name="settings_rounded_artwork_on">柔和的圆角封面</string>
+    <string name="settings_rounded_artwork_off">方形直角封面</string>
+    <string name="settings_motion_artwork">动态封面</string>
+    <string name="settings_motion_artwork_on">有动态封面时播放动画</string>
+    <string name="settings_motion_artwork_off">关闭 — 减轻设备负担</string>
+    <string name="settings_reduce_motion">减少动态效果</string>
+    <string name="settings_reduce_motion_on">背景保持静止</string>
+    <string name="settings_reduce_motion_off">背景漂移并随节拍脉动</string>
+    <string name="settings_low_power">低功耗模式</string>
+    <string name="settings_low_power_on">简化视觉效果，并释放正在播放页的视频解码器（返回时有轻微闪烁）</string>
+    <string name="settings_low_power_off">完整视觉效果，跨标签页保持视频就绪（无缝返回）</string>
+    <string name="settings_screensaver">屏幕保护</string>
+    <string name="settings_screensaver_sub">变暗前的等待时间</string>
+    <string name="settings_screensaver_off">关闭</string>
+    <string name="settings_value_min">%1$d 分钟</string>
+    <string name="settings_value_hours">%1$d 小时</string>
+    <string name="settings_ambient_screensaver">环境屏幕保护</string>
+    <string name="settings_ambient_screensaver_on">变暗时保留动态背景</string>
+    <string name="settings_ambient_screensaver_off">变暗时淡出为纯黑</string>
+
+    <!-- Settings: remote -->
+    <string name="settings_remote_type">遥控器类型</string>
+    <string name="settings_remote_auto">自动</string>
+    <string name="settings_remote_fire">Fire TV</string>
+    <string name="settings_remote_google">Google TV</string>
+    <string name="settings_remote_sub">Google TV 显示屏幕媒体与队列控件；Fire TV 使用菜单键</string>
+
+    <!-- Settings: A/V sync -->
+    <string name="settings_av_output">输出：%1$s</string>
+    <string name="settings_av_output_bt">蓝牙 · %1$s</string>
+    <string name="settings_av_output_bt_plain">蓝牙</string>
+    <string name="settings_av_output_hdmi">HDMI / 电视</string>
+    <string name="settings_av_bt_delay">已应用蓝牙延迟：+350 毫秒（估算）</string>
+    <string name="settings_av_standard">标准时序</string>
+    <string name="settings_av_auto">自动</string>
+    <string name="settings_av_auto_on">自动叠加蓝牙延迟估算</string>
+    <string name="settings_av_auto_off">手动 — 仅在基准上叠加下方的额外偏移</string>
+    <string name="settings_av_extra_offset">额外偏移</string>
+    <string name="settings_av_offset_value">%1$d 毫秒</string>
+    <string name="settings_av_extra_sub">同时作用于歌词、节拍和音乐视频口型同步。负值 = 提前，正值 = 延后</string>
+
+    <!-- Settings: dev menu -->
+    <string name="settings_hide_dev_menu">▾ 收起开发者菜单</string>
+    <string name="settings_open_dev_menu">▸ 打开开发者菜单</string>
+    <string name="settings_bearer_token">Bearer token</string>
+    <string name="settings_bearer_refresh_hint">刷新以重新抓取</string>
+    <string name="settings_status_active">有效</string>
+    <string name="settings_mut_set_at">设置于 %1$s</string>
+    <string name="settings_mut_set_via_phone">通过手机网页服务器设置</string>
+    <string name="settings_server_label">服务器</string>
+    <string name="settings_server_reachable">可访问</string>
+    <string name="settings_server_unreachable">无法访问 — 独立模式</string>
+    <string name="settings_recheck_server">重新检查服务器</string>
+    <string name="common_refresh">刷新</string>
+    <string name="settings_replay_setup">重放初始化</string>
+    <string name="settings_clear_token">清除 Token</string>
+    <string name="settings_force_quit">强制退出</string>
+    <string name="common_on">开</string>
+    <string name="common_off">关</string>
+    <string name="common_clear">清除</string>
+
+    <!-- Settings: connection -->
+    <string name="settings_phone_web_server">手机网页服务器</string>
+    <string name="settings_phone_server_hint">在手机上打开 → 粘贴 Music-User-Token</string>
+    <string name="settings_pc_server">电脑服务器</string>
+    <string name="settings_pc_ip_placeholder">192.168.x.x</string>
+    <string name="settings_pc_ip_press_edit">192.168.x.x — 按 OK 编辑</string>
+    <string name="settings_pc_active">当前：%1$s:3000</string>
+
+    <!-- Settings: phone server / bug report -->
+    <string name="settings_bug_report_title">问题报告 / 日志</string>
+    <string name="settings_bug_report_open">在手机上打开：</string>
+    <string name="settings_bug_report_desc">下载包含应用版本、设备、最近一次崩溃和近期日志的文本文件。</string>
+    <string name="settings_bug_report_wifi">连接 Wi-Fi 后即可查看报告页面。</string>
+    <string name="settings_phone_server_title">手机网页服务器</string>
+    <string name="settings_phone_server_on">开启 — 局域网内可访问</string>
+    <string name="settings_phone_server_desc">在手机上打开以设置 Token 和更改设置：</string>
+    <string name="settings_phone_server_wifi">连接 Wi-Fi 后即可打开手机页面。</string>
+
+    <!-- Settings: reset -->
+    <string name="settings_reset_app">重置应用</string>
+    <string name="settings_reset_sub">清除 Token、置顶和所有设置，然后重启。</string>
+    <string name="settings_reset_dialog_title">重置应用？</string>
+    <string name="settings_reset_dialog_body">这将清除你的 Token、置顶和所有设置，然后关闭应用。</string>
+    <string name="settings_reset_confirm">重置</string>
+
+    <!-- Settings: updates -->
+    <string name="settings_update_allow_installs">允许从此应用安装，然后返回</string>
+    <string name="settings_update_checking_github">正在检查 GitHub…</string>
+    <string name="settings_update_latest">已是最新版本</string>
+    <string name="settings_update_check_failed">检查失败 — 没有网络连接？</string>
+    <string name="settings_app_version">应用版本</string>
+    <string name="settings_version_format">v%1$s (%2$d · %3$s)</string>
+    <string name="settings_update_checking">检查中…</string>
+    <string name="settings_check_updates">检查更新</string>
+    <string name="settings_beta_updates">Beta 更新</string>
+    <string name="settings_beta_on">包含预览版本</string>
+    <string name="settings_beta_off">仅稳定版本</string>
+    <string name="settings_update_available">有可用更新：v%1$s</string>
+    <string name="settings_update_size">\u0020· %1$.1f MB</string>
+    <string name="settings_download_install">下载并安装%1$s</string>
+    <string name="settings_update_download_failed">下载失败</string>
+    <string name="settings_update_downloading">正在下载… %1$d%%</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_sign_in_title">登录</string>
+    <string name="onboarding_sign_in_sub">你的 Apple Music Token 需要在手机上粘贴 — 太长，无法用遥控器输入。</string>
+    <string name="onboarding_scan_or_open">在手机上扫描此二维码，或打开：</string>
+    <string name="onboarding_web_starting">正在启动网页服务器…</string>
+    <string name="onboarding_paste_token_hint">在手机上粘贴你的 Music-User-Token，此页面会自动继续。</string>
+    <string name="onboarding_token_preset">你已经保存了 Token。可粘贴新的以替换，或直接按“继续”。</string>
+    <string name="onboarding_token_received">已收到 Token。</string>
+    <string name="onboarding_token_waiting">等待 Token…</string>
+    <string name="onboarding_no_token_note">没有 Token 时只能播放 30 秒试听。</string>
+    <string name="onboarding_skip_preview">跳过 — 仅试听</string>
+    <string name="onboarding_start_listening">开始聆听</string>
+    <string name="onboarding_see_all_tips">先看完全部提示</string>
+
+    <string name="onboarding_language_title">语言</string>
+    <string name="onboarding_language_sub">选择应用界面语言，之后可在设置中更改。</string>
+    <string name="onboarding_language_system_body">跟随电视的系统语言。</string>
+    <string name="onboarding_language_english_body">英文界面。</string>
+    <string name="onboarding_language_chinese_body">简体中文界面。</string>
+
+    <string name="onboarding_remote_title">你的遥控器</string>
+    <string name="onboarding_remote_sub">检测到：%1$s。仅在检测有误时更改。</string>
+    <string name="onboarding_detected_fire">Fire TV</string>
+    <string name="onboarding_detected_google">Google TV / 其他</string>
+    <string name="onboarding_remote_fire_title">Fire TV 遥控器</string>
+    <string name="onboarding_remote_fire_body">菜单键打开队列和歌词。</string>
+    <string name="onboarding_remote_google_title">Google TV / 其他遥控器</string>
+    <string name="onboarding_remote_google_body">没有菜单键 — 改为显示屏幕上的列表按钮。</string>
+
+    <string name="onboarding_crossfade_title">交叉淡入淡出</string>
+    <string name="onboarding_crossfade_sub">曲目重叠的时长。同一专辑的歌曲之间始终不会淡入淡出。</string>
+    <string name="onboarding_crossfade_value">%1$.0f 秒</string>
+    <string name="onboarding_crossfade_note">随时可在 ··· 菜单或刚才用过的手机页面中更改。</string>
+
+    <string name="onboarding_tips_title">使用提示</string>
+    <string name="onboarding_tips_sub">一些你可能不会注意到的小技巧。</string>
+    <string name="onboarding_tip_long_press_title">长按 OK 查看更多选项</string>
+    <string name="onboarding_tip_long_press_body">在任意歌曲、专辑或播放列表上长按 OK 一秒。会打开一个菜单 — 接着播放、添加到队列、前往艺人。这是最重要的一条，界面上没有任何提示。</string>
+    <string name="onboarding_tip_lyrics_title_menu">菜单键显示歌词</string>
+    <string name="onboarding_tip_lyrics_title_button">三横线按钮显示歌词</string>
+    <string name="onboarding_tip_lyrics_body_menu">遥控器上带三条横线的按钮。按下可在同步歌词和接下来的歌曲之间切换。</string>
+    <string name="onboarding_tip_lyrics_body_button">它位于播放和切歌按钮旁边。按下可在同步歌词和接下来的歌曲之间切换。</string>
+    <string name="onboarding_tip_scrub_title">在歌曲中跳转</string>
+    <string name="onboarding_tip_scrub_body">按下方向键下，直到细条亮起。左右每次移动 10 秒，按 OK 跳转到该位置。</string>
+    <string name="onboarding_tip_dots_title">··· 按钮就是你的设置</string>
+    <string name="onboarding_tip_dots_body">睡眠定时、随机播放、循环、全屏歌词、环境屏幕保护、画中画 — 都在这里。</string>
+    <string name="onboarding_tip_projector_title">投影模式 — 让房间呼吸</string>
+    <string name="onboarding_tip_projector_body">一种氛围模式：画面暗至纯黑，专辑自身的色彩在整个电视上流动。没有控件，没有杂乱 — 只有音乐，更沉浸一点。从 ··· 菜单开启后让它播放。</string>
+    <string name="onboarding_tip_mv_title">音乐视频，全屏播放</string>
+    <string name="onboarding_tip_mv_body">带视频的播放列表和艺人页面会全屏播放，最高 1080p，边看边串流 — 从不完整下载。留意红色 MV 标签，浏览时可使用 ⧉ 按钮将其缩小到角落。</string>
+    <string name="onboarding_tips_done_hint">已全部看完 — 按下方向键下开始。</string>
+    <string name="onboarding_tips_more_hint">用 ‹ › 查看其余提示。</string>
+    <string name="onboarding_mock_10s">◄  10 秒  ►</string>
+    <string name="onboarding_mock_first_load">首次约 15–20 秒</string>
+
+    <!-- Shared Now Playing menu items (also used by the onboarding tip mocks) -->
+    <string name="menu_sleep_timer">睡眠定时</string>
+    <string name="menu_repeat">循环</string>
+    <string name="menu_full_screen_lyrics">全屏歌词</string>
+
+    <!-- App shell banners + exit dialog -->
+    <string name="appshell_token_expired">Token 已过期 — 请在 :8080 重新输入</string>
+    <string name="appshell_previews">正在播放试听 — 请在 :8080 设置 Token</string>
+    <string name="appshell_exit_title">退出 Apple Music TV？</string>
+    <string name="appshell_exit_confirm">退出</string>
+
+    <!-- Toasts (PlayerViewModel) -->
+    <string name="toast_high_memory">设备内存占用较高 — 播放可能会卡顿</string>
+    <string name="toast_radio_stopped">直播电台已停止 — 重新打开电台以继续</string>
+    <string name="toast_song_unavailable">“%1$s”已无法播放</string>
+    <string name="toast_standalone_switched">本地播放在此设备上不可用 — 已切换回服务器</string>
+    <string name="toast_standalone_failed">本地播放失败 — 改用服务器</string>
+    <string name="toast_cant_play_skipping">无法播放“%1$s” — 已跳过</string>
+    <string name="toast_cant_reach_server">无法连接服务器</string>
+    <string name="toast_cant_play_no_server">无法在本地播放“%1$s”，且没有可用的服务器</string>
+    <string name="toast_lost_connection">与服务器的连接已断开</string>
+    <string name="toast_server_online">服务器已恢复连接</string>
+    <string name="toast_added_to_library">已将“%1$s”添加到资料库</string>
+    <string name="toast_add_library_failed">无法添加到资料库</string>
+    <string name="toast_added_to_playlist">已添加到“%1$s”</string>
+    <string name="toast_add_playlist_failed">无法添加到播放列表</string>
+    <string name="toast_station_failed">无法为“%1$s”创建电台</string>
+    <string name="toast_station_starting">正在创建“%1$s”电台</string>
+
+    <!-- Notifications -->
+    <string name="notif_channel">Apple Music 提醒</string>
+    <string name="notif_channel_desc">认证和服务提醒</string>
+    <string name="notif_service_disruption_title">Apple Music — 服务中断</string>
+    <string name="notif_service_disruption_body">检测到上游服务问题（%1$s），可能出现性能下降。</string>
+    <string name="notif_token_expired_title">需要操作 — Token 已过期</string>
+    <string name="notif_token_expired_body">你的 Apple Music 会话已结束。请访问 %1$s 重新认证。</string>
+
+    <!-- Now Playing -->
+    <string name="np_nothing_playing">没有正在播放的内容</string>
+    <string name="np_sleep_end_of_song">睡眠定时：播完当前歌曲</string>
+    <string name="np_sleep_countdown">睡眠定时：%1$d:%2$s</string>
+    <string name="np_live">直播</string>
+    <string name="np_menu_cancel_timer">取消定时</string>
+    <string name="np_menu_end_of_song">播完当前歌曲</string>
+    <string name="np_menu_minutes">%1$d 分钟</string>
+    <string name="np_menu_sleep_end_of_song">睡眠定时：播完当前歌曲</string>
+    <string name="np_menu_sleep_left">睡眠定时（剩余 %1$d 分钟）</string>
+    <string name="np_repeat_off">循环：关闭</string>
+    <string name="np_repeat_all">循环：全部</string>
+    <string name="np_repeat_one">循环：单曲</string>
+    <string name="np_menu_add_to">添加到…</string>
+    <string name="np_menu_start_screensaver">启动屏幕保护</string>
+    <string name="np_panel_queue_lyrics">队列  •  菜单键 = 歌词</string>
+    <string name="np_panel_lyrics_queue">歌词  •  菜单键 = 队列</string>
+    <string name="np_panel_queue">队列</string>
+    <string name="np_next_badge">下一首</string>
+    <string name="np_up_next">接下来播放</string>
+    <string name="np_hold_ok_drop">长按 OK 放下</string>
+    <string name="np_next_up">即将播放</string>
+    <string name="np_from_queue">来自队列</string>
+
+    <!-- Shared additions -->
+    <string name="common_add_to_library">添加到资料库</string>
+    <string name="common_add_to_playlist">添加到播放列表</string>
+    <string name="common_sort_by">排序方式</string>
+    <string name="common_ascending">升序</string>
+    <string name="common_descending">降序</string>
+    <string name="common_name">名称</string>
+    <string name="common_date_added">添加日期</string>
+    <string name="common_title">标题</string>
+    <string name="common_default">默认</string>
+    <string name="common_more">更多</string>
+    <string name="common_no_content">暂无内容</string>
+    <string name="common_error_prefix">错误：%1$s</string>
+    <string name="error_could_not_connect">无法连接到服务器</string>
+    <string name="add_to_no_playlists">没有可编辑的播放列表</string>
+
+    <!-- Home -->
+    <string name="home_no_token">暂无内容 — 请设置 Music User Token</string>
+
+    <!-- Library -->
+    <string name="library_sort_playlist_order">播放列表顺序</string>
+    <string name="library_no_playlists">暂无播放列表</string>
+    <string name="library_no_albums">暂无专辑</string>
+    <string name="library_no_artists">暂无艺人</string>
+    <string name="library_no_songs">暂无歌曲</string>
+    <string name="library_no_token_title">没有 Music User Token</string>
+    <string name="library_no_token_body">打开设置标签页 → 用手机网页服务器添加 Token</string>
+
+    <!-- Playlist detail -->
+    <string name="playlist_song_count">%1$d 首歌曲</string>
+    <string name="playlist_no_tracks">暂无曲目</string>
+
+    <!-- Artist detail -->
+    <string name="artist_section_top_songs">热门歌曲</string>
+    <string name="artist_section_music_videos">音乐视频</string>
+    <string name="artist_section_latest_release">最新发布</string>
+    <string name="artist_section_featured">精选</string>
+    <string name="artist_section_similar">相似艺人</string>
+    <string name="artist_station">电台</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">艺人、专辑、歌曲…</string>
+    <string name="search_box_hint">搜索 — 按 OK 输入…</string>
+    <string name="search_top_results">热门结果</string>
+    <string name="search_categories">分类</string>
+    <string name="search_recent">最近搜索</string>
+    <string name="search_more_to_explore">更多探索</string>
+    <string name="search_start_typing">输入以搜索 Apple Music</string>
+    <string name="search_badge_category">分类</string>
+    <string name="search_link_behind_songs">歌曲背后的故事</string>
+    <string name="search_link_charts">排行榜</string>
+    <string name="search_link_browse_by_genre">按类型浏览</string>
+    <string name="search_link_moods">心情与活动</string>
+    <string name="search_link_decades">年代</string>
+
+    <!-- Radio -->
+    <string name="radio_title">电台</string>
+    <string name="radio_search_placeholder">搜索电台…</string>
+    <string name="radio_country_placeholder">国家名称…</string>
+    <string name="radio_showing">显示：%1$s</string>
+    <string name="radio_no_stations">未找到电台</string>
+    <string name="radio_popular">热门</string>
+    <string name="radio_go">搜索</string>
+
+    <!-- Category / genre -->
+    <string name="category_load_error">无法加载此分类。</string>
+    <string name="genre_load_error">无法加载类型</string>
+
+    <!-- Music video -->
+    <string name="mv_cant_play">无法播放此视频</string>
+    <string name="mv_picker_audio">音频</string>
+    <string name="mv_picker_quality">画质</string>
+    <string name="mv_error_sign_in">需要登录</string>
+    <string name="mv_error_load_failed">加载视频失败</string>
+    <string name="mv_error_playback_failed">播放失败</string>
+    <string name="mv_hdcp_error">HDCP 错误 — 显示链路未受保护，已阻止高清播放。当前播放 %1$dp。</string>
+    <string name="mv_subtitles_off">关闭</string>
+    <string name="mv_subtitles">字幕</string>
+    <string name="mv_audio_track">音轨 %1$d</string>
+
+    <!-- Spotlight badges -->
+    <string name="spotlight_updated_playlist">已更新的播放列表</string>
+    <string name="spotlight_new_radio_show">新电台节目</string>
+    <string name="spotlight_new_song">新歌</string>
+    <string name="spotlight_new_video">新视频</string>
+    <string name="spotlight_new_album">新专辑</string>
+
+</resources>

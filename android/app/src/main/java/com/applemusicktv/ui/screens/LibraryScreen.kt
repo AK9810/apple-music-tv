@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.annotation.StringRes
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,12 +21,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
+import com.applemusicktv.R
 import com.applemusicktv.data.model.Album
 import com.applemusicktv.data.model.Artist
 import com.applemusicktv.data.model.Song
@@ -35,8 +38,11 @@ import com.applemusicktv.ui.viewmodel.LibraryViewModel
 import com.applemusicktv.ui.viewmodel.PlayerViewModel
 import com.applemusicktv.ui.viewmodel.SortField
 
-private enum class LibrarySection(val label: String) {
-    Playlists("Playlists"), Albums("Albums"), Artists("Artists"), Songs("Songs"),
+private enum class LibrarySection(@StringRes val labelRes: Int) {
+    Playlists(R.string.common_playlists),
+    Albums(R.string.common_albums),
+    Artists(R.string.common_artists),
+    Songs(R.string.common_songs),
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -70,7 +76,7 @@ fun LibraryScreen(
                     CircularProgressIndicator(color = Color(0xFFFA233B))
                 }
                 state.error != null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text("Error: ${state.error}", color = Color(0xFFFF3B30), fontSize = 14.sp)
+                    Text(stringResource(R.string.common_error_prefix, state.error ?: ""), color = Color(0xFFFF3B30), fontSize = 14.sp)
                 }
                 else -> Column(Modifier.fillMaxSize()) {
                     SortBar(section, state.sort.field, state.sort.dir) { f, d -> vm.setSort(f, d) }
@@ -111,7 +117,7 @@ private fun SectionSidebar(selected: LibrarySection, onSelect: (LibrarySection) 
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
-            "Library",
+            stringResource(R.string.nav_library),
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
@@ -139,7 +145,7 @@ private fun SectionSidebar(selected: LibrarySection, onSelect: (LibrarySection) 
                             .background(if (isSel) Color(0xFFFA233B) else Color.Transparent)
                     )
                     Text(
-                        text = s.label,
+                        text = stringResource(s.labelRes),
                         fontSize = 16.sp,
                         fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Medium,
                         color = if (isSel) Color.White else Color(0xFF9A9A9A),
@@ -159,13 +165,11 @@ private fun SortBar(
     onSort: (SortField, com.applemusicktv.ui.viewmodel.SortDir) -> Unit,
 ) {
     val fields = when (section) {
-        LibrarySection.Playlists -> listOf(SortField.DEFAULT to "Playlist Order", SortField.NAME to "Name")
-        LibrarySection.Albums    -> listOf(SortField.DEFAULT to "Date Added", SortField.NAME to "Name", SortField.ARTIST to "Artist")
-        LibrarySection.Artists   -> listOf(SortField.DEFAULT to "Date Added", SortField.NAME to "Name")
-        LibrarySection.Songs     -> listOf(SortField.DEFAULT to "Date Added", SortField.NAME to "Title", SortField.ARTIST to "Artist")
+        LibrarySection.Playlists -> listOf(SortField.DEFAULT to R.string.library_sort_playlist_order, SortField.NAME to R.string.common_name)
+        LibrarySection.Albums    -> listOf(SortField.DEFAULT to R.string.common_date_added, SortField.NAME to R.string.common_name, SortField.ARTIST to R.string.common_artist)
+        LibrarySection.Artists   -> listOf(SortField.DEFAULT to R.string.common_date_added, SortField.NAME to R.string.common_name)
+        LibrarySection.Songs     -> listOf(SortField.DEFAULT to R.string.common_date_added, SortField.NAME to R.string.common_title, SortField.ARTIST to R.string.common_artist)
     }
-    val curLabel = fields.firstOrNull { it.first == currentField }?.second ?: "Sort"
-    val dirArrow = if (currentDir == com.applemusicktv.ui.viewmodel.SortDir.ASC) "↑" else "↓"
     var showDialog by remember { mutableStateOf(false) }
 
     // Round ⇅ sort button, right-aligned — matches the playlist detail's sort control.
@@ -204,7 +208,7 @@ private fun SortBar(
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun SortDialog(
-    fields: List<Pair<SortField, String>>,
+    fields: List<Pair<SortField, Int>>,
     currentField: SortField,
     currentDir: com.applemusicktv.ui.viewmodel.SortDir,
     onPick: (SortField, com.applemusicktv.ui.viewmodel.SortDir) -> Unit,
@@ -220,19 +224,19 @@ private fun SortDialog(
             modifier = Modifier.width(340.dp),
         ) {
             Column(Modifier.padding(vertical = 18.dp)) {
-                Text("Sort By", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White,
+                Text(stringResource(R.string.common_sort_by), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White,
                     modifier = Modifier.padding(start = 22.dp, bottom = 10.dp))
-                fields.forEachIndexed { i, (field, label) ->
+                fields.forEachIndexed { i, (field, labelRes) ->
                     SortRow(
-                        label = label,
+                        label = stringResource(labelRes),
                         selected = field == currentField,
                         modifier = if (i == 0) Modifier.focusRequester(firstFocus) else Modifier,
                     ) { onPick(field, currentDir) }
                 }
                 Box(Modifier.fillMaxWidth().padding(vertical = 8.dp, horizontal = 22.dp)
                     .height(1.dp).background(Color(0xFF3A3A3C)))
-                SortRow("Ascending", currentDir == Asc) { onPick(currentField, Asc) }
-                SortRow("Descending", currentDir == Desc) { onPick(currentField, Desc) }
+                SortRow(stringResource(R.string.common_ascending), currentDir == Asc) { onPick(currentField, Asc) }
+                SortRow(stringResource(R.string.common_descending), currentDir == Desc) { onPick(currentField, Desc) }
             }
         }
         LaunchedEffect(Unit) { firstFocus.requestFocus() }
@@ -277,7 +281,7 @@ private fun PlaylistGrid(
     onTogglePin: (PlaylistDto) -> Unit,
 ) {
     if (playlists.isEmpty()) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) { Text("No playlists", color = Color(0xFF555555)) }
+        Box(Modifier.fillMaxSize(), Alignment.Center) { Text(stringResource(R.string.library_no_playlists), color = Color(0xFF555555)) }
         return
     }
     LazyVerticalGrid(
@@ -376,7 +380,7 @@ private fun PlaylistCard(
 
 @Composable
 private fun AlbumGrid(albums: List<Album>, onAlbumClick: (String) -> Unit) {
-    if (albums.isEmpty()) { Box(Modifier.fillMaxSize(), Alignment.Center) { Text("No albums", color = Color(0xFF555555)) }; return }
+    if (albums.isEmpty()) { Box(Modifier.fillMaxSize(), Alignment.Center) { Text(stringResource(R.string.library_no_albums), color = Color(0xFF555555)) }; return }
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
         contentPadding = PaddingValues(start = 32.dp, end = 48.dp, top = 20.dp, bottom = 48.dp),
@@ -393,7 +397,7 @@ private fun AlbumGrid(albums: List<Album>, onAlbumClick: (String) -> Unit) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun ArtistList(artists: List<Artist>, onArtistClick: (String) -> Unit) {
-    if (artists.isEmpty()) { Box(Modifier.fillMaxSize(), Alignment.Center) { Text("No artists", color = Color(0xFF555555)) }; return }
+    if (artists.isEmpty()) { Box(Modifier.fillMaxSize(), Alignment.Center) { Text(stringResource(R.string.library_no_artists), color = Color(0xFF555555)) }; return }
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 32.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         items(artists, key = { it.id }) { artist ->
             Surface(onClick = { onArtistClick(artist.id) }, modifier = Modifier.fillMaxWidth(), shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
@@ -417,7 +421,7 @@ private fun SongList(
     onArtistClick: (String) -> Unit = {},
     onAlbumClick: (String) -> Unit = {},
 ) {
-    if (songs.isEmpty()) { Box(Modifier.fillMaxSize(), Alignment.Center) { Text("No songs", color = Color(0xFF555555)) }; return }
+    if (songs.isEmpty()) { Box(Modifier.fillMaxSize(), Alignment.Center) { Text(stringResource(R.string.library_no_songs), color = Color(0xFF555555)) }; return }
     var menuSong by remember { mutableStateOf<Song?>(null) }
     LazyColumn(modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 32.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         items(songs.size) { idx ->
@@ -490,12 +494,12 @@ private fun SongContextMenu(
             }
             Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF2A2A2A)))
             Spacer(Modifier.height(2.dp))
-            ContextMenuItem("Play Next", onPlayNext, Modifier.focusRequester(firstFocus))
-            ContextMenuItem("Add to Queue", onAddToQueue)
-            if (onAddToLibrary  != null) ContextMenuItem("Add to Library",  onAddToLibrary)
-            if (onAddToPlaylist != null) ContextMenuItem("Add to Playlist", onAddToPlaylist)
-            if (onGoToArtist != null) ContextMenuItem("Go to Artist", onGoToArtist)
-            if (onGoToAlbum  != null) ContextMenuItem("Go to Album",  onGoToAlbum)
+            ContextMenuItem(stringResource(R.string.common_play_next), onPlayNext, Modifier.focusRequester(firstFocus))
+            ContextMenuItem(stringResource(R.string.common_add_to_queue), onAddToQueue)
+            if (onAddToLibrary  != null) ContextMenuItem(stringResource(R.string.common_add_to_library),  onAddToLibrary)
+            if (onAddToPlaylist != null) ContextMenuItem(stringResource(R.string.common_add_to_playlist), onAddToPlaylist)
+            if (onGoToArtist != null) ContextMenuItem(stringResource(R.string.common_go_to_artist), onGoToArtist)
+            if (onGoToAlbum  != null) ContextMenuItem(stringResource(R.string.common_go_to_album),  onGoToAlbum)
         }
     }
 }
@@ -517,8 +521,8 @@ private fun ContextMenuItem(label: String, onClick: () -> Unit, modifier: Modifi
 private fun NoMutPlaceholder() {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("No Music User Token", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text("Open Dev tab → use web server on phone to add token", color = Color(0xFF666666), fontSize = 13.sp)
+            Text(stringResource(R.string.library_no_token_title), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.library_no_token_body), color = Color(0xFF666666), fontSize = 13.sp)
         }
     }
 }
@@ -556,7 +560,7 @@ private fun PlaylistPickerDialog(
                 .clip(RoundedCornerShape(16.dp)).background(Color(0xFF1C1C1E)).padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Text("Add to Playlist", fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.SemiBold,
+            Text(stringResource(R.string.common_add_to_playlist), fontSize = 15.sp, color = Color.White, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
             Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF2A2A2A)))
             Spacer(Modifier.height(4.dp))
@@ -565,7 +569,7 @@ private fun PlaylistPickerDialog(
                 pls == null -> Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
                     androidx.compose.material3.CircularProgressIndicator(color = Color(0xFFFA233B))
                 }
-                pls.isEmpty() -> Text("No editable playlists", color = Color(0xFF888888), fontSize = 13.sp,
+                pls.isEmpty() -> Text(stringResource(R.string.add_to_no_playlists), color = Color(0xFF888888), fontSize = 13.sp,
                     modifier = Modifier.padding(16.dp))
                 else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     items(pls.size) { i ->

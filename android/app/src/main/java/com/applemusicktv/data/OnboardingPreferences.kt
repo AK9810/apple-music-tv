@@ -19,6 +19,9 @@ class OnboardingPreferences @Inject constructor(@ApplicationContext context: Con
 
     val completed: Boolean get() = prefs.getInt("completed_version", 0) >= CURRENT_VERSION
 
+    /** Last completed onboarding version — 0 on a fresh install, 2 for users who finished v1.2. */
+    val completedVersion: Int get() = prefs.getInt("completed_version", 0)
+
     fun markCompleted() = prefs.edit { putInt("completed_version", CURRENT_VERSION) }
 
     /** Dev-menu escape hatch so the flow can be re-tested without clearing app data. */
@@ -33,7 +36,8 @@ class OnboardingPreferences @Inject constructor(@ApplicationContext context: Con
         set(v) = prefs.edit { putString("remote_override", v) }
 
     companion object {
-        const val CURRENT_VERSION = 2
+        /** 3 added the language step; existing users go straight to that step only. */
+        const val CURRENT_VERSION = 3
         const val REMOTE_AUTO = "auto"
         const val REMOTE_FIRE = "fire"
         const val REMOTE_GOOGLE = "google"

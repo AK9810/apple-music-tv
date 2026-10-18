@@ -15,6 +15,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -25,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.tv.material3.*
 import coil.compose.AsyncImage
+import com.applemusicktv.R
 import com.applemusicktv.data.datasource.RadioStation
 import com.applemusicktv.ui.viewmodel.PlayerViewModel
 import com.applemusicktv.ui.viewmodel.RadioViewModel
@@ -42,7 +44,7 @@ fun RadioScreen(playerVm: PlayerViewModel, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxSize().background(Color(0xFF0A0A0A)).padding(horizontal = 48.dp, vertical = 28.dp)) {
         // Title + search on one line
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Radio", fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(stringResource(R.string.radio_title), fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
             Spacer(Modifier.width(24.dp))
             Row(
                 Modifier.width(360.dp).height(38.dp).background(Color(0xFF1C1C1E), RoundedCornerShape(10.dp)).padding(horizontal = 14.dp),
@@ -56,11 +58,11 @@ fun RadioScreen(playerVm: PlayerViewModel, modifier: Modifier = Modifier) {
                     keyboardActions = KeyboardActions(onSearch = { vm.search() }),
                     modifier = Modifier.weight(1f),
                     decorationBox = { inner ->
-                        if (state.query.isEmpty()) Text("Search stations…", color = Color(0xFF555555), fontSize = 14.sp)
+                        if (state.query.isEmpty()) Text(stringResource(R.string.radio_search_placeholder), color = Color(0xFF555555), fontSize = 14.sp)
                         inner()
                     },
                 )
-                Chip("Go") { vm.search() }
+                Chip(stringResource(R.string.radio_go)) { vm.search() }
             }
         }
 
@@ -68,7 +70,7 @@ fun RadioScreen(playerVm: PlayerViewModel, modifier: Modifier = Modifier) {
 
         // Country chips: Popular + detected/added + "+"
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            SelChip("Popular", state.activeCountry == "") { vm.selectPopular() }
+            SelChip(stringResource(R.string.radio_popular), state.activeCountry == "") { vm.selectPopular() }
             state.countries.forEach { c ->
                 SelChip(c, state.activeCountry == c) { vm.selectCountry(c) }
             }
@@ -87,7 +89,7 @@ fun RadioScreen(playerVm: PlayerViewModel, modifier: Modifier = Modifier) {
                         }),
                         modifier = Modifier.width(120.dp).focusRequester(addFocus),
                         decorationBox = { inner ->
-                            if (addDraft.isEmpty()) Text("Country name…", color = Color(0xFF555555), fontSize = 13.sp)
+                            if (addDraft.isEmpty()) Text(stringResource(R.string.radio_country_placeholder), color = Color(0xFF555555), fontSize = 13.sp)
                             inner()
                         },
                     )
@@ -99,7 +101,7 @@ fun RadioScreen(playerVm: PlayerViewModel, modifier: Modifier = Modifier) {
 
         state.correctionNote?.let {
             Spacer(Modifier.height(6.dp))
-            Text("Showing $it", fontSize = 11.sp, color = Color(0xFFFA233B))
+            Text(stringResource(R.string.radio_showing, it), fontSize = 11.sp, color = Color(0xFFFA233B))
         }
 
         Spacer(Modifier.height(12.dp))
@@ -107,7 +109,7 @@ fun RadioScreen(playerVm: PlayerViewModel, modifier: Modifier = Modifier) {
         if (state.loading && state.stations.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) { CircularProgressIndicator(color = Color(0xFFFA233B)) }
         } else if (state.stations.isEmpty()) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) { Text("No stations found", color = Color(0xFF666666), fontSize = 14.sp) }
+            Box(Modifier.fillMaxSize(), Alignment.Center) { Text(stringResource(R.string.radio_no_stations), color = Color(0xFF666666), fontSize = 14.sp) }
         } else {
             LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(state.stations, key = { it.id }) { st ->

@@ -14,7 +14,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import coil.compose.AsyncImage
+import com.applemusicktv.R
 import com.applemusicktv.data.repository.CategoryGroup
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -98,11 +100,11 @@ fun BrowseScreen(
     if (state.error != null) {
         Box(modifier.fillMaxSize(), Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Could not connect to server", color = Color(0xFFFF453A), fontSize = 16.sp)
+                Text(stringResource(R.string.error_could_not_connect), color = Color(0xFFFF453A), fontSize = 16.sp)
                 Text(state.error ?: "", color = Color(0xFF555555), fontSize = 12.sp)
                 Spacer(Modifier.height(16.dp))
                 Surface(onClick = vm::load, colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFFFA233B))) {
-                    Text("Retry", color = Color.White, modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp))
+                    Text(stringResource(R.string.common_retry), color = Color.White, modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp))
                 }
             }
         }
@@ -111,7 +113,7 @@ fun BrowseScreen(
 
     if (state.shelves.isEmpty()) {
         Box(modifier.fillMaxSize(), Alignment.Center) {
-            Text("No content available", color = Color(0xFF555555), fontSize = 14.sp)
+            Text(stringResource(R.string.common_no_content), color = Color(0xFF555555), fontSize = 14.sp)
         }
         return
     }
@@ -274,7 +276,7 @@ private fun SeeAllCard(size: Int, onClick: () -> Unit) {
                     com.applemusicktv.ui.components.Glyph.NEXT, size = 26.dp, color = Color.White)
             }
         }
-        Text("More", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFF2F2F5),
+        Text(stringResource(R.string.common_more), fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFF2F2F5),
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp))
     }
 }
