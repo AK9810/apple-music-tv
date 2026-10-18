@@ -16,6 +16,7 @@ yarn-error.log
 android/.gradle/
 android/build/
 android/app/build/
+android/dist/
 android/captures/
 android/local.properties
 .kotlin/

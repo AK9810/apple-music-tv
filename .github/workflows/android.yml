@@ -55,11 +55,33 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
 
+      # Copy the Gradle output to a version-carrying filename, so release downloads are
+      # distinguishable instead of every release handing out the same "app-debug.apk":
+      #   tag push (stable)  → AppleMusicTV-v1.4.apk
+      #   main / PR (dev)    → AppleMusicTV-1.4-dev-<sha>.apk
+      # Dev builds also get a stable alias (AppleMusicTV-dev.apk) because the rolling dev
+      # release is deleted and re-created on every push, so the README link can't pin a sha.
+      - name: Stage versioned APK
+        id: apk
+        run: |
+          mkdir -p dist
+          SRC=app/build/outputs/apk/debug/app-debug.apk
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            NAME="AppleMusicTV-${GITHUB_REF_NAME}.apk"
+          else
+            VERSION=$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)
+            NAME="AppleMusicTV-${VERSION:-unknown}-dev-${GITHUB_SHA:0:7}.apk"
+            cp "$SRC" dist/AppleMusicTV-dev.apk
+          fi
+          cp "$SRC" "dist/$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "base=${NAME%.apk}" >> "$GITHUB_OUTPUT"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: ${{ steps.apk.outputs.base }}
+          path: android/dist/${{ steps.apk.outputs.name }}
           if-no-files-found: error
 
       # Delete the previous dev release + tag first, so the re-created one gets a fresh
@@ -83,11 +105,13 @@ jobs:
           # (UpdateChecker.parseRelease) to tell this rolling build apart from the
           # installed one. Without it, Beta never offers CI builds.
           body: |
-            Auto-built from `main`. Sideload: `adb install -r app-debug.apk`
+            Auto-built from `main`. Sideload: `adb install -r ${{ steps.apk.outputs.name }}`
 
             commit ${{ github.sha }}
           prerelease: true
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          files: |
+            android/dist/${{ steps.apk.outputs.name }}
+            android/dist/AppleMusicTV-dev.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -103,11 +127,11 @@ jobs:
           # Release notes come from RELEASE_NOTES.md (repo root) — rewrite it as part of
           # every version cut. Falls back to the inline body if the file can't be read.
           body: |
-            Stable build of `${{ github.ref_name }}`. Sideload: `adb install -r app-debug.apk`
+            Stable build of `${{ github.ref_name }}`. Sideload: `adb install -r ${{ steps.apk.outputs.name }}`
 
             commit ${{ github.sha }}
           body_path: RELEASE_NOTES.md
           prerelease: false
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/dist/${{ steps.apk.outputs.name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
