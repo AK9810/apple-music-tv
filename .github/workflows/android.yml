@@ -100,12 +100,13 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: "Apple Music TV ${{ github.ref_name }}"
-          # Same `commit <sha>` line as the dev release — harmless for the stable
-          # channel (pure version compare) and useful for telling builds apart.
+          # Release notes come from RELEASE_NOTES.md (repo root) — rewrite it as part of
+          # every version cut. Falls back to the inline body if the file can't be read.
           body: |
             Stable build of `${{ github.ref_name }}`. Sideload: `adb install -r app-debug.apk`
 
             commit ${{ github.sha }}
+          body_path: RELEASE_NOTES.md
           prerelease: false
           files: android/app/build/outputs/apk/debug/app-debug.apk
         env:

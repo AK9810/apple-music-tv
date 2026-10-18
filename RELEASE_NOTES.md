@@ -1,47 +1,24 @@
-# Apple Music TV — v1.2
+# Apple Music TV — v1.4
 
-- A big one. Standalone on-device playback is now the default, radio plays, and the whole Now Playing / Browse experience got a facelift.
+- Everything from the 1.3/1.4 roadmap lands together: a bilingual UI, big memory and smoothness wins on low-RAM TVs, and the streaming pipeline overhaul (256 kbps tier, 8× faster cold start).
 
-*🎵 Playback & Audio*
-Fully standalone by default — catalog, library, search, lyrics, artwork and on-device audio decryption, no computer needed.
-Dead library songs now play — obscure/matched tracks that used to skip instantly fall back to the catalog copy on-device automatically.
-Live radio — Apple Music 1 / Hits / Country and station shows play, with live in-band track metadata, a LIVE badge, and per-station lyric offset.
-Radio stations — station cards play their rolling queue (cracked Apple's next-tracks endpoint).
-Volume leveling — optional RMS auto-gain so quiet masters aren't buried.
-Gapless & crossfade — same-album tracks stay gapless; everything else crossfades (tunable 1–15s).
-Add to Library / Add to Playlist from the song menu.
+*🌐 Languages*
+English and Simplified Chinese UI — switch in Settings → Language or during onboarding; the choice is remembered per app.
+All menus, settings, lyrics and dialogs are translated; Apple's content (album/song titles, editorial shelves) stays in English.
 
-*📺 Now Playing*
-Dynamic background — fluid color backdrop extracted live from the album art, beat-reactive (Normal / Strong / Insane), with motion (animated) covers.
-Projector mode — a calmer, slower ambient backdrop for the big screen.
-Screensaver — kicks in when idle so nothing burns in.
-Big-screen lyrics — full-screen, word-by-word synced lyrics with adjustable size.
-Scrub bar, sleep timer, shuffle/repeat, go-to-artist/album in the transport menu.
+*🎵 Streaming & Audio (proxy server)*
+The 256 kbps high-quality tier actually plays now — an asset-priority bug had quietly served the 64 kbps HE-AAC stream instead.
+Lossless detection is by real codec (ffprobe), not a bitrate guess, so only genuine ALAC/FLAC gets transcoded.
+Byte-range manifests are sliced locally instead of re-downloading the same file up to 17×.
+Streaming works behind a system proxy (decryptor no longer inherits and breaks on local MITM proxies).
+Cold start cut ~8× (≈20 s → 2.5–4 s): segments are fetched and decrypted in parallel with the manifest work.
 
-*🎬 Music Videos*
-Music videos and interviews play, grouped ("Music Videos", "Behind the Songs"), and now show on artist pages.
-Fixed the secure-surface bleed, HDCP quality traps, and A/V lip-sync.
+*⚡ Performance (2 GB TVs)*
+Memory peak during browse/playback trimmed and recomposition churn reduced — measurably smoother scrolling and playback on Fire TV Stick-class hardware.
 
-*🗂️ Library — revamped*
-Left sidebar categories (Playlists / Albums / Artists / Songs), modernized.
-Sort via a round popup button — by name / artist / date, ascending/descending, remembered per playlist.
-Pin playlists to the top; instant load from cache.
-
-*🔎 Browse & Listen Now*
-Menu revamp — real Apple editorial shelves: Top Picks for You hero, the Featured "New" spotlight, Find Your Mood, genre/mood/decade tiles, "More to Explore".
-Personalization no longer vanishes during Apple's recommendation outages.
-Search — songs, categories, curators, multirooms, and editorial links.
-Loading skeletons that match the real layout.
-
-*⚙️ Settings — revamped*
-Reorganized Dev/Settings: background mode, orb speed, lyrics size, rounded/square art, motion toggle, reduce motion, Low Power Mode, beat intensity, crossfade, standalone toggle, PC server IP, and the in-app updater.
-
-*⚡ Performance*
-Smoother scrolling — motion covers wait before animating; background logging no longer stalls menus.
-Off-main-thread Home cache, capped bitmap memory, RGB_565 palette.
+*🔄 Updates*
+The in-app updater now tracks this repo's releases (the upstream stopped publishing).
+Version tags (e.g. `v1.4`) automatically publish a stable release with the APK; `main` keeps publishing the rolling dev build.
 
 *🐛 Fixes*
-Grey Now Playing background on colorful covers; missing-artwork songs get their own color.
-Editorial playlists showing "no songs"; double failure toasts; per-tab back-stack memory (every tab returns to its last page).
-Dev → Re-check Server / Refresh now actually reload Listen Now.
-Removed non-playable radio-show cards from Browse.
+CI builds green again on current runners (setup-android v4).

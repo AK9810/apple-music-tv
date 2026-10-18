@@ -29,7 +29,7 @@ android {
         applicationId = "com.applemusicktv"
         minSdk = 23
         targetSdk = 35
-        versionCode = 4
+        versionCode = 5
         versionName = "1.4"
         // Set your proxy server IP here
         // Proxy server URL. Set `proxyBaseUrl` in local.properties (gitignored)
