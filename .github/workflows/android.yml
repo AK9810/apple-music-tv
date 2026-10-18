@@ -34,7 +34,10 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        # v3 targets Node 20, which runners now force onto Node 24 — the action
+        # aborts before doing anything, failing the build at this step. v4 is the
+        # Node 24 release; its inputs are unchanged for our usage.
+        uses: android-actions/setup-android@v4
 
       - name: Provide default proxy URL for CI build
         run: echo "proxyBaseUrl=http://10.0.2.2:3000/" > local.properties
