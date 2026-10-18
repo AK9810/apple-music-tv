@@ -2,13 +2,12 @@ name: Android APK
 
 on:
   push:
-    # `dev` builds produce download-only APK artifacts (Actions page) — the rolling-dev
-    # release publish steps below are gated on refs/heads/main, so the rolling dev release
-    # and the Beta channel are only ever fed by pushes to main.
+    # `main` is the only integration branch: every push builds and refreshes the rolling
+    # `dev` pre-release (the publish steps below are gated on refs/heads/main).
     # A version-like tag (v1.4, 1.4, …) additionally publishes a STABLE release — the
     # branches and tags filters are OR'd for push events. The `dev` tag deliberately does
     # NOT match these patterns, so recreating it never re-triggers this workflow.
-    branches: [ main, dev ]
+    branches: [ main ]
     tags: [ 'v[0-9]*', '[0-9]*' ]
   pull_request:
     branches: [ main ]
