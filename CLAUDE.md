@@ -27,7 +27,7 @@ cd android
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew assembleDebug --no-daemon
 adb connect <FIRE_TV_IP> && adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
-GitHub Actions (`.github/workflows/android.yml`) builds the debug APK on every push, uploads it as an artifact, **and publishes a rolling `dev` pre-release** (tag `dev`) so anyone can download the APK without logging in to GitHub.
+GitHub Actions (`.github/workflows/android.yml`) builds the debug APK on every push, uploads it as an artifact, **publishes a rolling `dev` pre-release** (tag `dev`) on pushes to `main` so anyone can download the APK without logging in to GitHub, **and publishes a stable (non-prerelease) release whenever a version-like tag** (`v1.4`, `1.4`, …) **is pushed** — a version tag without a GitHub *Release* is invisible to the in-app updater's stable channel (`/releases/latest` skips prereleases). The in-app `UpdateChecker` polls **this repo's** releases (`AK9810/apple-music-tv`), not the upstream's.
 
 ## Build config
 - AGP 8.7.0, Kotlin 2.1.20, KSP 2.1.20-1.0.31, Gradle 8.9, Hilt 2.56

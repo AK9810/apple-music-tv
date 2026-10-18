@@ -2,10 +2,14 @@ name: Android APK
 
 on:
   push:
-    # `dev` builds produce download-only APK artifacts (Actions page) — the release
-    # publish steps below are gated on refs/heads/main, so the rolling dev release
+    # `dev` builds produce download-only APK artifacts (Actions page) — the rolling-dev
+    # release publish steps below are gated on refs/heads/main, so the rolling dev release
     # and the Beta channel are only ever fed by pushes to main.
+    # A version-like tag (v1.4, 1.4, …) additionally publishes a STABLE release — the
+    # branches and tags filters are OR'd for push events. The `dev` tag deliberately does
+    # NOT match these patterns, so recreating it never re-triggers this workflow.
     branches: [ main, dev ]
+    tags: [ 'v[0-9]*', '[0-9]*' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -83,6 +87,26 @@ jobs:
 
             commit ${{ github.sha }}
           prerelease: true
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # A pushed version tag publishes a STABLE (non-prerelease) release. The in-app
+      # stable channel resolves /releases/latest, which only ever returns non-prereleases,
+      # so a version tag without this step is invisible to the updater.
+      - name: Publish stable release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Apple Music TV ${{ github.ref_name }}"
+          # Same `commit <sha>` line as the dev release — harmless for the stable
+          # channel (pure version compare) and useful for telling builds apart.
+          body: |
+            Stable build of `${{ github.ref_name }}`. Sideload: `adb install -r app-debug.apk`
+
+            commit ${{ github.sha }}
+          prerelease: false
           files: android/app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
