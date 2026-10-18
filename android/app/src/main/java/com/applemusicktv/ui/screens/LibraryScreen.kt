@@ -84,17 +84,24 @@ fun LibraryScreen(
                         when (section) {
                             LibrarySection.Playlists -> {
                                 val pinnedIds by vm.pinnedIds.collectAsState()
+                                // Sorting runs in a remember: these used to re-sort (and allocate)
+                                // on every recomposition — including each focus change while
+                                // D-padding through the grid.
+                                val playlists = remember(state.playlists, state.sort, pinnedIds) { vm.sortedPlaylists() }
                                 PlaylistGrid(
-                                    playlists  = vm.sortedPlaylists(),
+                                    playlists  = playlists,
                                     pinnedIds  = pinnedIds,
                                     onOpen     = { onPlaylistClick(it.id, it.name, it.artworkUrl(500)) },
                                     onPlay     = { vm.playPlaylist(it.id, playerVm) },
                                     onTogglePin = { vm.togglePin(it.id) },
                                 )
                             }
-                            LibrarySection.Albums  -> AlbumGrid(vm.sortedAlbums(), onAlbumClick)
-                            LibrarySection.Artists -> ArtistList(vm.sortedArtists(), onArtistClick)
-                            LibrarySection.Songs   -> SongList(vm.sortedSongs(), playerVm, onArtistClick, onAlbumClick)
+                            LibrarySection.Albums  -> AlbumGrid(
+                                remember(state.albums, state.sort) { vm.sortedAlbums() }, onAlbumClick)
+                            LibrarySection.Artists -> ArtistList(
+                                remember(state.artists, state.sort) { vm.sortedArtists() }, onArtistClick)
+                            LibrarySection.Songs   -> SongList(
+                                remember(state.songs, state.sort) { vm.sortedSongs() }, playerVm, onArtistClick, onAlbumClick)
                         }
                     }
                 }

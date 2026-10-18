@@ -10,10 +10,12 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class PlaylistDetailState(
@@ -47,17 +49,23 @@ class PlaylistDetailViewModel @Inject constructor(
     private var loadedId: String? = null
     private val prefs = context.getSharedPreferences("playlist_detail_cache", Context.MODE_PRIVATE)
     private val listType = Types.newParameterizedType(List::class.java, Song::class.java)
+    // Built once — this used to allocate a Moshi adapter on every cache read and write.
+    private val songsAdapter = moshi.adapter<List<Song>>(listType)
 
     fun load(playlistId: String, initialArtworkUrl: String? = null) {
         if (loadedId == playlistId && _state.value.tracks.isNotEmpty()) return
         loadedId = playlistId
 
-        // Show cache immediately if available
-        val cached = readCache(playlistId)
-        if (cached != null) {
-            _state.value = cached.copy(loading = true, artworkUrl = initialArtworkUrl ?: cached.artworkUrl)
-        } else {
-            _state.value = PlaylistDetailState(loading = true, artworkUrl = initialArtworkUrl)
+        viewModelScope.launch {
+            // Cache parse runs on Default: a long playlist is a few hundred KB of JSON, and
+            // doing it inline blocked the first composition of the screen.
+            val cached = withContext(Dispatchers.Default) { readCache(playlistId) }
+            if (loadedId != playlistId) return@launch
+            if (cached != null) {
+                _state.value = cached.copy(loading = true, artworkUrl = initialArtworkUrl ?: cached.artworkUrl)
+            } else {
+                _state.value = PlaylistDetailState(loading = true, artworkUrl = initialArtworkUrl)
+            }
         }
 
         viewModelScope.launch {
@@ -69,6 +77,7 @@ class PlaylistDetailViewModel @Inject constructor(
 
         viewModelScope.launch {
             repo.getPlaylistTracks(playlistId).onSuccess { songs ->
+                if (loadedId != playlistId) return@onSuccess
                 val newState = PlaylistDetailState(
                     tracks     = songs,
                     artworkUrl = initialArtworkUrl ?: songs.firstOrNull()?.artworkUrl,
@@ -76,7 +85,7 @@ class PlaylistDetailViewModel @Inject constructor(
                     motionUrl  = _state.value.motionUrl,
                 )
                 _state.value = newState
-                writeCache(playlistId, newState)
+                withContext(Dispatchers.Default) { writeCache(playlistId, newState) }
             }.onFailure {
                 _state.update { it.copy(loading = false) }
             }
@@ -86,7 +95,7 @@ class PlaylistDetailViewModel @Inject constructor(
     private fun readCache(playlistId: String): PlaylistDetailState? {
         val json = prefs.getString("tracks_$playlistId", null) ?: return null
         return try {
-            val tracks = moshi.adapter<List<Song>>(listType).fromJson(json) ?: return null
+            val tracks = songsAdapter.fromJson(json) ?: return null
             PlaylistDetailState(
                 tracks     = tracks,
                 artworkUrl = prefs.getString("art_$playlistId", null),
@@ -98,7 +107,7 @@ class PlaylistDetailViewModel @Inject constructor(
     private fun writeCache(playlistId: String, state: PlaylistDetailState) {
         try {
             prefs.edit {
-                putString("tracks_$playlistId", moshi.adapter<List<Song>>(listType).toJson(state.tracks))
+                putString("tracks_$playlistId", songsAdapter.toJson(state.tracks))
                 putString("art_$playlistId", state.artworkUrl)
                 putString("curator_$playlistId", state.curatorName)
             }

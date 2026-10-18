@@ -53,6 +53,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+
+    testOptions {
+        unitTests {
+            // Pure-JVM tests (QrCode, the CENC decryptor) exercise code that logs through
+            // android.util.Log, which is only a stub on the JVM. Return defaults instead of
+            // throwing "Method i in android.util.Log not mocked".
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {

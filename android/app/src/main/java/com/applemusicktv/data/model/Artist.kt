@@ -1,5 +1,8 @@
 package com.applemusicktv.data.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Artist(
     val id:         String,
     val name:       String,

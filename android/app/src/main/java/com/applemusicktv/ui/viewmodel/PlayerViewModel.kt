@@ -60,6 +60,11 @@ enum class RepeatMode { Off, One, All }
 private const val STUTTER_LIMIT = 3
 /** Sleep timer eases the volume down over this window before pausing. */
 private const val SLEEP_FADE_MS = 5_000L
+/** On-device clear-audio cache: trim back to the target once it passes the cap. */
+private const val CLEAR_CACHE_MAX_BYTES = 400L * 1024 * 1024
+private const val CLEAR_CACHE_TARGET_BYTES = 300L * 1024 * 1024
+/** Filename sanitizer for cache files — precompiled, unlike the per-track Regex it replaces. */
+private val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9._-]")
 
 /** Dump schm/tenc/pssh of the standalone init segment. Costs a full segment download. */
 private const val PROBE_INIT_SEGMENT = false
@@ -113,7 +118,6 @@ data class PlayerState(
     val currentSong:      Song?           = null,
     val song:             Song?           = null,
     val isPlaying:        Boolean         = false,
-    val progressMs:       Long            = 0L,
     val queue:            List<Song>      = emptyList(),
     val queueIndex:       Int             = 0,
     val lyrics:           List<LyricLine> = emptyList(),
@@ -216,6 +220,22 @@ class PlayerViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(PlayerState())
     val state: StateFlow<PlayerState> = _state
+
+    /**
+     * Playback position, kept OUT of [PlayerState] on purpose.
+     *
+     * It ticks ~once a second for the whole session; while it lived in the state object every
+     * tick allocated a new PlayerState and invalidated every reader of it — AppShell, the nav
+     * bar, Now Playing and the queue — even though only the seek bar and the active lyric line
+     * care. As its own flow, the tick costs one long write and a handful of leaf recompositions.
+     */
+    private val _progressMs = MutableStateFlow(0L)
+    val progressMs: StateFlow<Long> = _progressMs
+
+    /** Push a position to the UI clock (throttled by the caller). */
+    private fun publishProgress(ms: Long) {
+        if (_progressMs.value != ms) _progressMs.value = ms
+    }
 
     // Integrated queue: the queue may hold music videos. When the current item is a video,
     // the audio engine idles and this emits the video so the UI hands it to the video player.
@@ -957,6 +977,16 @@ class PlayerViewModel @Inject constructor(
      */
     private fun useStandalone() = standalonePrefs.isEnabled() || !serverPrefs.serverReachable
 
+    // Moshi adapters for the persisted session, built once. saveState() runs on every song change
+    // and every 10 s while playing; building two adapters each time was pure garbage.
+    private val songJsonAdapter by lazy { moshi.adapter(Song::class.java) }
+    private val queueJsonAdapter by lazy {
+        moshi.adapter<List<Song>>(Types.newParameterizedType(List::class.java, Song::class.java))
+    }
+    private val saveExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "am-state-save").apply { isDaemon = true }
+    }
+
     private fun saveState() {
         val s = _state.value
         val song = s.currentSong ?: return
@@ -967,18 +997,34 @@ class PlayerViewModel @Inject constructor(
         // A deferred restore hasn't loaded the player yet (position would read 0) — keep the saved
         // state untouched until the user actually plays it.
         if (pendingRestore != null) return
-        val adapter = moshi.adapter(Song::class.java)
-        val listType = Types.newParameterizedType(List::class.java, Song::class.java)
-        val listAdapter = moshi.adapter<List<Song>>(listType)
-        prefs.edit {
-            putString("song",  adapter.toJson(song))
-            putString("queue", listAdapter.toJson(s.queue))
-            putInt("queue_index", s.queueIndex)
-            putLong("position_ms", player.currentPosition)
-            putBoolean("full_stream", s.isFullStream)
-            putFloat("beat_intensity", s.beatIntensity)
-            putBoolean("crossfade_enabled", s.crossfadeEnabled)
-            putBoolean("background_play", s.backgroundPlayEnabled)
+        val posMs = player.currentPosition
+        val queue = s.queue
+        val queueIndex = s.queueIndex
+        val fullStream = s.isFullStream
+        val beat = s.beatIntensity
+        val crossfade = s.crossfadeEnabled
+        val bgPlay = s.backgroundPlayEnabled
+        // Serialise + write OFF the main thread: a 1000-track queue is a multi-hundred-KB JSON
+        // string, and this used to run on Main at every track change (a visible hitch) and on
+        // every 10 s tick. Serial execution also keeps the writes ordered, so the newest state
+        // is always the one on disk.
+        runCatching {
+            saveExecutor.execute {
+                runCatching {
+                    val songJson  = songJsonAdapter.toJson(song)
+                    val queueJson = queueJsonAdapter.toJson(queue)
+                    prefs.edit {
+                        putString("song",  songJson)
+                        putString("queue", queueJson)
+                        putInt("queue_index", queueIndex)
+                        putLong("position_ms", posMs)
+                        putBoolean("full_stream", fullStream)
+                        putFloat("beat_intensity", beat)
+                        putBoolean("crossfade_enabled", crossfade)
+                        putBoolean("background_play", bgPlay)
+                    }
+                }
+            }
         }
     }
 
@@ -998,11 +1044,16 @@ class PlayerViewModel @Inject constructor(
         val songJson = prefs.getString("song", null) ?: return@launch
         if (hasPlayedSomething) return@launch
         try {
-            val adapter = moshi.adapter(Song::class.java)
-            val listType = Types.newParameterizedType(List::class.java, Song::class.java)
-            val listAdapter = moshi.adapter<List<Song>>(listType)
-            val song  = adapter.fromJson(songJson) ?: return@launch
-            val queue = listAdapter.fromJson(prefs.getString("queue", "[]") ?: "[]") ?: listOf(song)
+            // Parse the persisted session on Default: a saved queue is the whole playlist, and
+            // decoding it on Main delayed the first frame after a cold start.
+            val queueJson = prefs.getString("queue", "[]") ?: "[]"
+            val restored = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                val song = songJsonAdapter.fromJson(songJson) ?: return@withContext null
+                val queue = queueJsonAdapter.fromJson(queueJson) ?: listOf(song)
+                song to queue
+            } ?: return@launch
+            val song = restored.first
+            val queue = restored.second
             val idx   = prefs.getInt("queue_index", 0).coerceIn(0, queue.lastIndex)
             val posMs = prefs.getLong("position_ms", 0L)
             val full  = hasMUT()
@@ -1016,7 +1067,8 @@ class PlayerViewModel @Inject constructor(
             val motionArt = prefs.getBoolean("motion_art", false)
             com.applemusicktv.media.GainProcessor.enabled = prefs.getBoolean("volume_leveling", false)
             _state.update { it.copy(currentSong = song, song = song, queue = queue, queueIndex = idx, isFullStream = full, beatIntensity = beat, crossfadeEnabled = crossfade, screensaverTimeoutMin = screensaverMin, backgroundPlayEnabled = bgPlay, nowPlayingBackground = npBg, screensaverKeepBackground = keepBg, showNowPlayingInfo = npInfo, motionArtworkEnabled = motionArt,
-                orbSpeed = prefs.getFloat("orb_speed", 1.0f), lyricsScale = prefs.getFloat("lyrics_scale", 1.0f), artworkRounded = prefs.getBoolean("artwork_rounded", true), reduceMotion = prefs.getBoolean("reduce_motion", false), lowPowerMode = prefs.getBoolean("low_power", false), volumeLeveling = prefs.getBoolean("volume_leveling", false), progressMs = posMs) }
+                orbSpeed = prefs.getFloat("orb_speed", 1.0f), lyricsScale = prefs.getFloat("lyrics_scale", 1.0f), artworkRounded = prefs.getBoolean("artwork_rounded", true), reduceMotion = prefs.getBoolean("reduce_motion", false), lowPowerMode = prefs.getBoolean("low_power", false), volumeLeveling = prefs.getBoolean("volume_leveling", false)) }
+            publishProgress(posMs)
             // A restored music video must go to the video player, NOT the audio stream — otherwise
             // it hits /api/stream, 404s ("No playable asset"), and gets skipped as if unavailable.
             if (song.isMusicVideo) {
@@ -1285,7 +1337,8 @@ class PlayerViewModel @Inject constructor(
             webServer.addLog("PLR", "playQueueItem idx=$idx VIDEO ${song.title}")
             player.pause()
             awaitingSongStart = null
-            _state.update { it.copy(currentSong = song, song = song, queueIndex = idx, lyrics = emptyList(), motionUrl = null, progressMs = 0L) }
+            _state.update { it.copy(currentSong = song, song = song, queueIndex = idx, lyrics = emptyList(), motionUrl = null) }
+            publishProgress(0L)
             saveState()
             _videoRequest.value = VideoRequest(song, autoOpen = userOpened)
             return
@@ -1298,7 +1351,8 @@ class PlayerViewModel @Inject constructor(
         webServer.addLog("PLR", "playQueueItem idx=$idx song=${song.title}${if (standalone) " [standalone]" else ""}")
         awaitingSongStart = song.id
         com.applemusicktv.media.GainProcessor.currentTrackKey = song.id   // per-track volume-leveling memory
-        _state.update { it.copy(currentSong = song, song = song, queueIndex = idx, lyrics = lyricsCache[song.id] ?: emptyList(), motionUrl = null, progressMs = 0L) }
+        _state.update { it.copy(currentSong = song, song = song, queueIndex = idx, lyrics = lyricsCache[song.id] ?: emptyList(), motionUrl = null) }
+        publishProgress(0L)
         saveState()
         player.repeatMode = Player.REPEAT_MODE_OFF
         // Silence the outgoing track immediately on selection — building a standalone
@@ -1614,7 +1668,7 @@ class PlayerViewModel @Inject constructor(
             // Serve a rewritten copy of the playlist from disk — see
             // rewritePlaylistForExo for why the EXT-X-KEY line has to go.
             val playlistUri = try {
-                val f = java.io.File(context.cacheDir, "standalone_${song.id.replace(Regex("[^A-Za-z0-9._-]"), "_")}.m3u8")
+                val f = java.io.File(context.cacheDir, "standalone_${song.id.safeFileId()}.m3u8")
                 f.writeText(appleClient.rewritePlaylistForExo(wb.hlsText, wb.hlsUrl))
                 android.net.Uri.fromFile(f).toString()
             } catch (e: Exception) {
@@ -1704,14 +1758,43 @@ class PlayerViewModel @Inject constructor(
         if (activeBgDecryptSongId != null && activeBgDecryptSongId != keepSongId) activeBgDecryptCall?.cancel()
     }
 
+    /** Song id → filename-safe stem. Precompiled: this used to build a Regex per track. */
+    private fun String.safeFileId(): String = UNSAFE_FILE_CHARS.replace(this, "_")
+
+    /**
+     * Keep the on-device clear-audio cache bounded.
+     *
+     * `clear_<id>.mp4` files are full decrypted tracks (4–65 MB) and used to live until Android
+     * evicted the whole cache dir — on a 2 GB / 8 GB-storage Fire TV a long listening session
+     * could fill the partition and make the app itself fail to write. Trim by bytes, oldest
+     * access first, once we pass [CLEAR_CACHE_MAX_BYTES]; a prefetch and the playing track stay.
+     */
+    private fun pruneClearCache(keep: java.io.File?) {
+        runCatching {
+            val dir = context.cacheDir
+            val files = dir.listFiles { f -> f.isFile && f.name.startsWith("clear_") && f.name.endsWith(".mp4") }
+                ?: return
+            var total = files.sumOf { it.length() }
+            if (total <= CLEAR_CACHE_MAX_BYTES) return
+            // lastModified is touched on every hit, so this is an LRU by access.
+            for (f in files.sortedBy { it.lastModified() }) {
+                if (total <= CLEAR_CACHE_TARGET_BYTES) break
+                if (f == keep) continue
+                val len = f.length()
+                if (f.delete()) total -= len
+            }
+        }
+    }
+
     /** Derive key → fetch whole fMP4 → decrypt in-app → clear file on disk. Reuses an
      *  already-decrypted file (that's what lets prefetch warm crossfade/skip targets),
      *  and dedupes concurrent requests for the same song (fast-skip fires many).
      *  `foreground` = the song being played right now; it preempts any in-flight prefetch download
      *  and takes the decrypt slot next, so it never waits behind a background warm. */
     private suspend fun decryptToFile(song: Song, foreground: Boolean = true): java.io.File? {
-        val out = java.io.File(context.cacheDir, "clear_${song.id.replace(Regex("[^A-Za-z0-9._-]"), "_")}.mp4")
-        if (out.exists() && out.length() > 0) return out
+        val out = java.io.File(context.cacheDir, "clear_${song.id.safeFileId()}.mp4")
+        if (out.exists() && out.length() > 0) { out.setLastModified(System.currentTimeMillis()); return out }
+        pruneClearCache(keep = out)
         val existing = decryptInFlight[song.id]
         if (existing != null) {
             if (foreground) preemptBgDecrypt(keepSongId = song.id)   // promote; but never abort THIS song
@@ -1747,13 +1830,24 @@ class PlayerViewModel @Inject constructor(
                             .addHeader("Cookie", "media-user-token=$mut").build()
                     )
                     if (!foreground) { activeBgDecryptCall = call; activeBgDecryptSongId = song.id }   // a foreground play can abort this
-                    val encrypted = try { call.execute().body!!.bytes() }
+                    var encrypted = try { call.execute().body!!.bytes() }
                         finally { if (!foreground && activeBgDecryptSongId == song.id) { activeBgDecryptCall = null; activeBgDecryptSongId = null } }
                     val dec = com.applemusicktv.media.widevine.CencDecryptor(keyHex)
                     val tmp = java.io.File(context.cacheDir, "${out.name}.tmp")
-                    tmp.writeBytes(dec.decryptWhole(encrypted))
+                    // Stream the clear audio straight to disk. Building it in memory first held
+                    // ~4 copies of a lossless track at once (download + decrypt input + fragments
+                    // + output buffer), which is what pushed 2 GB boxes into the low-memory killer
+                    // while a prefetch ran alongside. decryptWholeTo decrypts `encrypted` in place.
+                    try {
+                        java.io.BufferedOutputStream(tmp.outputStream(), 256 * 1024).use { fos ->
+                            dec.decryptWholeTo(encrypted, fos)
+                        }
+                    } finally {
+                        encrypted = ByteArray(0)   // let the download buffer go before the log/rename
+                    }
                     tmp.renameTo(out)   // atomic — a half-written file is never played
-                    webServer.addLog("AMCENC", "song=${song.id} in=${encrypted.size} out=${out.length()} ${System.currentTimeMillis() - t0}ms ${if (foreground) "fg" else "bg"}")
+                    out.setLastModified(System.currentTimeMillis())   // LRU stamp for pruneClearCache
+                    webServer.addLog("AMCENC", "song=${song.id} out=${out.length()} ${System.currentTimeMillis() - t0}ms ${if (foreground) "fg" else "bg"}")
                     out
                 } finally { decryptMutex.unlock() }
             } catch (e: Exception) {
@@ -1813,7 +1907,7 @@ class PlayerViewModel @Inject constructor(
         preloadedForSongId = null
         // Past 10s, Prev restarts the current song (standard player behaviour);
         // only a quick double-press walks back to the previous track.
-        if (pos > 10_000L) { player.seekTo(0L); _state.update { it.copy(progressMs = 0L) }; return }
+        if (pos > 10_000L) { player.seekTo(0L); publishProgress(0L); return }
         val prevIdx = s.queueIndex - 1
         if (prevIdx >= 0) playQueueItem(prevIdx, skipFadeIn = true) else player.seekTo(0L)
     }
@@ -1980,16 +2074,16 @@ class PlayerViewModel @Inject constructor(
                 // playing (READY and near the start), so the previous song's position/duration
                 // doesn't linger on the bar during the source build.
                 if (playState == Player.STATE_READY && sourcePos < 2_000L) awaitingSongStart = null
-                if (_state.value.progressMs != 0L) _state.update { it.copy(progressMs = 0L) }
+                if (_progressMs.value != 0L) publishProgress(0L)
             } else {
                 // A seek while PAUSED moves the player but not the clock, and the throttle
                 // below only runs while playing — so the bar would sit frozen at the old
                 // position until playback resumed. Detect the jump and push it through.
-                val jumped = kotlin.math.abs(sourcePos - _state.value.progressMs) > 1_000L
+                val jumped = kotlin.math.abs(sourcePos - _progressMs.value) > 1_000L
                 if (playing || progressSource !== player || jumped) {
                     if (jumped || now - lastProgressPushMs >= 900L) {
                         lastProgressPushMs = now
-                        _state.update { it.copy(progressMs = sourcePos) }
+                        publishProgress(sourcePos)
                     }
                 }
             }
@@ -2135,8 +2229,8 @@ class PlayerViewModel @Inject constructor(
                         _state.update { it.copy(
                             currentSong = nextSong, song = nextSong, lyrics = emptyList(), motionUrl = null,
                             queue = newQueue, queueIndex = actualNextIdx, userQueue = newUserQueue,
-                            progressMs = 0L,
                         )}
+                        publishProgress(0L)
                         loadLyrics(nextSong.id); loadMotion(nextSong.id)
                         if (nextSong.artistId == null || nextSong.albumId == null) enrichSongIds(nextSong.id)
                         val fadeDurationMs = remaining.coerceIn(300L, crossfadeDurationMs)

@@ -12,9 +12,11 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class AlbumDetailUiState(
@@ -41,17 +43,20 @@ class AlbumDetailViewModel @Inject constructor(
     private val prefs = context.getSharedPreferences("album_detail_cache", Context.MODE_PRIVATE)
     private val songListType  = Types.newParameterizedType(List::class.java, Song::class.java)
     private val albumListType = Types.newParameterizedType(List::class.java, Album::class.java)
+    // Built once per ViewModel instead of per cache read/write.
+    private val albumAdapter  = moshi.adapter(Album::class.java)
+    private val songsAdapter  = moshi.adapter<List<Song>>(songListType)
+    private val albumsAdapter = moshi.adapter<List<Album>>(albumListType)
 
     init { if (albumId.isNotEmpty()) load() }
 
     private fun load() {
-        // Show cache instantly if available
-        val cached = readCache(albumId)
-        if (cached != null) {
-            _state.value = cached.copy(isLoading = true)
-        }
-
         viewModelScope.launch {
+            // JSON parse of the cache belongs on Default — it used to run on Main in init and
+            // stalled the first composition of the screen.
+            val cached = withContext(Dispatchers.Default) { readCache(albumId) }
+            if (cached != null) _state.value = cached.copy(isLoading = true)
+
             try {
                 val albumD   = async { repo.getAlbum(albumId) }
                 val tracksD  = async { repo.getAlbumTracks(albumId) }
@@ -66,7 +71,7 @@ class AlbumDetailViewModel @Inject constructor(
                     motionUrl     = motionUrl,
                 )
                 _state.value = newState
-                writeCache(albumId, newState)
+                withContext(Dispatchers.Default) { writeCache(albumId, newState) }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message) }
             }
@@ -80,9 +85,9 @@ class AlbumDetailViewModel @Inject constructor(
             val relatedJson = prefs.getString("related_$id", null)
             AlbumDetailUiState(
                 isLoading     = false,
-                album         = moshi.adapter(Album::class.java).fromJson(albumJson),
-                tracks        = moshi.adapter<List<Song>>(songListType).fromJson(tracksJson) ?: emptyList(),
-                relatedAlbums = relatedJson?.let { moshi.adapter<List<Album>>(albumListType).fromJson(it) } ?: emptyList(),
+                album         = albumAdapter.fromJson(albumJson),
+                tracks        = songsAdapter.fromJson(tracksJson) ?: emptyList(),
+                relatedAlbums = relatedJson?.let { albumsAdapter.fromJson(it) } ?: emptyList(),
             )
         } catch (_: Exception) { null }
     }
@@ -90,9 +95,9 @@ class AlbumDetailViewModel @Inject constructor(
     private fun writeCache(id: String, state: AlbumDetailUiState) {
         try {
             prefs.edit {
-                state.album?.let { putString("album_$id", moshi.adapter(Album::class.java).toJson(it)) }
-                putString("tracks_$id",  moshi.adapter<List<Song>>(songListType).toJson(state.tracks))
-                putString("related_$id", moshi.adapter<List<Album>>(albumListType).toJson(state.relatedAlbums))
+                state.album?.let { putString("album_$id", albumAdapter.toJson(it)) }
+                putString("tracks_$id",  songsAdapter.toJson(state.tracks))
+                putString("related_$id", albumsAdapter.toJson(state.relatedAlbums))
             }
         } catch (_: Exception) {}
     }

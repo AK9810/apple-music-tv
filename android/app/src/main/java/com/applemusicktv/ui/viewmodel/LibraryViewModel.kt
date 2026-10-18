@@ -14,10 +14,12 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 enum class SortField { DEFAULT, NAME, ARTIST, DATE }
@@ -54,9 +56,14 @@ class LibraryViewModel @Inject constructor(
     private val songsAdapter     = moshi.adapter<List<Song>>(Types.newParameterizedType(List::class.java, Song::class.java))
 
     init {
-        loadCache()
         loadSavedSort()
-        refresh()
+        // Cache first, then refresh — in that order. Parsing four Moshi lists off disk is hundreds
+        // of ms of JSON work and must not run on the main thread, but letting it race the network
+        // refresh would paint fresh data and then overwrite it with the stale cache.
+        viewModelScope.launch {
+            withContext(Dispatchers.Default) { loadCache() }
+            refresh()
+        }
     }
 
     private fun loadSavedSort() {
@@ -188,28 +195,36 @@ class LibraryViewModel @Inject constructor(
             launch {
                 repo.getLibraryPlaylists().onSuccess { p ->
                     _state.update { it.copy(playlists = p) }
-                    cachePrefs.edit { putString("playlists", playlistsAdapter.toJson(p)) }
+                    persist { putString("playlists", playlistsAdapter.toJson(p)) }
                 }
             }
             launch {
                 repo.getLibraryAlbums().onSuccess { a ->
                     _state.update { it.copy(albums = a) }
-                    cachePrefs.edit { putString("albums", albumsAdapter.toJson(a)) }
+                    persist { putString("albums", albumsAdapter.toJson(a)) }
                 }
             }
             launch {
                 repo.getLibraryArtists().onSuccess { art ->
                     _state.update { it.copy(artists = art) }
-                    cachePrefs.edit { putString("artists", artistsAdapter.toJson(art)) }
+                    persist { putString("artists", artistsAdapter.toJson(art)) }
                 }
             }
             launch {
                 repo.getLibrarySongs().onSuccess { s ->
                     _state.update { it.copy(songs = s) }
-                    cachePrefs.edit { putString("songs", songsAdapter.toJson(s)) }
+                    persist { putString("songs", songsAdapter.toJson(s)) }
                 }
             }
         }
         job.invokeOnCompletion { _state.update { it.copy(isLoading = false) } }
+    }
+
+    /** Serialise + write a cache entry on the IO pool. A large library is several MB of JSON;
+     *  doing that inline on Main dropped frames right when the lists landed. */
+    private fun persist(block: android.content.SharedPreferences.Editor.() -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { cachePrefs.edit(commit = false, action = block) }
+        }
     }
 }

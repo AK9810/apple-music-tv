@@ -95,62 +95,112 @@ class CencDecryptor(private val keyHex: String) {
 
     /** Decrypt a complete fMP4 file in one pass: rewrite `moov` (enca→mp4a, strip
      *  sinf/pssh) and AES-CTR every `moof`/`mdat`. This is the path Apple actually
-     *  uses — the HLS playlist is just byteranges into this one file. */
+     *  uses — the HLS playlist is just byteranges into this one file.
+     *
+     *  Kept for small inputs/tests only — it holds the whole clear track in memory. Playback
+     *  must use [decryptWholeTo], which streams straight to disk. */
     fun decryptWhole(data: ByteArray): ByteArray {
+        val out = ByteArrayOutputStream(data.size + 64)
+        decryptWholeTo(data, out)
+        return out.toByteArray()
+    }
+
+    /**
+     * Same as [decryptWhole] but streams the result straight to [out] instead of building
+     * another full copy of the track in RAM.
+     *
+     * Fire TV boxes have 2 GB of RAM total, and a lossless track is 40–65 MB: the old
+     * list-of-fragments + ByteArrayOutputStream + toByteArray shape held the encrypted
+     * bytes AND three more copies of the clear audio at once (≈250 MB peak, right next to
+     * a prefetch doing the same). Two passes over [data] — one to size the synthesized
+     * `sidx`, one to decrypt and write — keep the peak at a single copy of the input.
+     * [data] is decrypted IN PLACE; callers must not reuse it.
+     */
+    fun decryptWholeTo(data: ByteArray, out: java.io.OutputStream) {
         readTencIvSize(data)
         val timescale = readTimescale(data)
-        val head = ByteArrayOutputStream()      // ftyp + moov
-        val frags = ArrayList<ByteArray>()       // each = rewritten moof + decrypted mdat
-        val fragDurations = ArrayList<Long>()    // in `timescale` units, parallel to frags
 
+        // Pass 1: header walk only — how big is each output fragment, and how long is it?
+        val fragSizes = ArrayList<Int>()
+        val fragDurations = ArrayList<Long>()
+        run {
+            var i = 0
+            var pendingMoofSize = 0
+            var pendingDur = 0L
+            while (i + 8 <= data.size) {
+                val size = be32(data, i)
+                if (size < 8 || i + size > data.size) break
+                when (type4(data, i + 4)) {
+                    "moof" -> {
+                        pendingDur = parseMoof(data, i, i + size).durationTs
+                        pendingMoofSize = rewriteMoof(data, i, i + size).size
+                    }
+                    "mdat" -> {
+                        if (pendingMoofSize > 0) {
+                            fragSizes.add(pendingMoofSize + size)
+                            fragDurations.add(pendingDur)
+                            pendingMoofSize = 0
+                        } else {
+                            fragSizes.add(size)   // stray mdat (shouldn't happen)
+                            fragDurations.add(0L)
+                        }
+                    }
+                }
+                i += size
+            }
+        }
+
+        // Pass 2: emit ftyp+moov, the synthesized sidx, then decrypt + write each fragment.
+        // Everything up to the first fragment goes into `head` — including any box we don't
+        // recognise, exactly as the previous all-in-memory version did. That ordering matters:
+        // sidx.reference_size counts ONLY moof+mdat pairs, so any byte written between fragments
+        // would shift every later offset in the index and break seeking.
         var i = 0
-        var pendingMoof: ByteArray? = null
-        var ivs: List<ByteArray> = emptyList()
-        var subs: List<List<Pair<Int, Int>>> = emptyList()
-        var sizes = IntArray(0)
-        var pendingDur = 0L
+        val head = ByteArrayOutputStream()
         while (i + 8 <= data.size) {
             val size = be32(data, i)
             if (size < 8 || i + size > data.size) break
             when (type4(data, i + 4)) {
                 "moov" -> writeBox(head, "moov", rewriteBoxes(data, i + 8, i + size, top = false))
-                "ftyp" -> head.write(data, i, size)
+                "sidx", "styp" -> { /* drop — we emit our own index */ }
+                "moof", "mdat" -> break     // first fragment: stop, flush below
+                else -> head.write(data, i, size)
+            }
+            i += size
+        }
+        out.write(head.toByteArray())
+        out.write(buildSidx(timescale, fragDurations, fragSizes))
+
+        var pendingMoof: ByteArray? = null
+        var ivs: List<ByteArray> = emptyList()
+        var subs: List<List<Pair<Int, Int>>> = emptyList()
+        var sizes = IntArray(0)
+        while (i + 8 <= data.size) {
+            val size = be32(data, i)
+            if (size < 8 || i + size > data.size) break
+            when (type4(data, i + 4)) {
                 "moof" -> {
                     val info = parseMoof(data, i, i + size)
-                    ivs = info.ivs; subs = info.subs; sizes = info.sizes; pendingDur = info.durationTs
+                    ivs = info.ivs; subs = info.subs; sizes = info.sizes
                     // Strip senc/saiz/saio (and seig groupings) so ExoPlayer treats the
                     // now-clear samples as unencrypted; without this it NPEs in parseTraf
                     // looking for a track-encryption box we already removed from the init.
                     pendingMoof = rewriteMoof(data, i, i + size)
                 }
                 "mdat" -> {
-                    val copy = data.copyOfRange(i, i + size)
-                    decryptMdat(copy, 8, size, ivs, subs, sizes)
+                    decryptMdat(data, i + 8, i + size, ivs, subs, sizes)
                     val moof = pendingMoof
-                    if (moof != null) {
-                        frags.add(moof + copy)
-                        fragDurations.add(pendingDur)
-                        pendingMoof = null
-                    } else {
-                        frags.add(copy) // stray mdat (shouldn't happen)
-                        fragDurations.add(0L)
-                    }
+                    if (moof != null) { out.write(moof); pendingMoof = null }
+                    out.write(data, i, size)
                 }
                 // skip any existing sidx/styp — we emit our own index
                 "sidx", "styp" -> { /* drop */ }
-                else -> head.write(data, i, size)
+                // A box we don't know, sitting between fragments: dropping it is the only way to
+                // keep the sidx offsets valid (see the note above).
+                else -> {}
             }
             i += size
         }
-
-        // Emit ftyp+moov, then a synthesized sidx that lets ExoPlayer seek (the
-        // original file has none — that's why fast-forward failed), then fragments.
-        val out = ByteArrayOutputStream(data.size + 64)
-        out.write(head.toByteArray())
-        val refSizes = frags.map { it.size }
-        out.write(buildSidx(timescale, fragDurations, refSizes))
-        for (f in frags) out.write(f)
-        return out.toByteArray()
     }
 
     /** sidx (v0) indexing each moof+mdat fragment so the stream is seekable. */

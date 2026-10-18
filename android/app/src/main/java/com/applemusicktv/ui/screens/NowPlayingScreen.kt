@@ -88,6 +88,8 @@ import com.applemusicktv.ui.viewmodel.RepeatMode
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -107,6 +109,10 @@ fun NowPlayingScreen(
     modifier: Modifier = Modifier,
 ) {
     val state by playerVm.state.collectAsState()
+    // The position lives in its own flow (see PlayerViewModel.progressMs) and is passed down as a
+    // State — NOT read here. Reading it at this scope re-ran the whole Now Playing tree once a
+    // second; every consumer below defers the read to a leaf composable or the draw phase.
+    val reportedProgress = playerVm.progressMs.collectAsState()
     val song = state.currentSong
 
     val toggleCount by navVm.toggleQueue.collectAsState()
@@ -114,8 +120,7 @@ fun NowPlayingScreen(
 
     // While a track is still being fetched/decrypted (isLoading), freeze the clock: the seek bar
     // and lyrics must not advance before there's actually audio. Resumes when playback really starts.
-    val smoothProgress = rememberSmoothProgressMs(state.progressMs, state.isPlaying && !state.isLoading)
-
+    val smoothProgress = rememberSmoothProgressMs(reportedProgress, state.isPlaying && !state.isLoading)
     DisposableEffect(Unit) {
         playerVm.nowPlayingVisible = true
         onDispose { playerVm.nowPlayingVisible = false }
@@ -144,7 +149,9 @@ fun NowPlayingScreen(
         // Asymmetric transition: dropping INTO idle is a slow ~1.6 s eased settle (chrome fades, art
         // eases into place) so it reads as one deliberate move; coming BACK is a fast ~240 ms punch so
         // the controls snap to attention the instant you touch the D-pad — no waiting for a fade.
-        val idle by animateFloatAsState(
+        // Kept as a State and read INSIDE graphicsLayer/layout lambdas below: reading it with `by`
+        // here re-ran this whole composable every animation frame for the length of the fade.
+        val idle = animateFloatAsState(
             if (chromeVisible) 0f else 1f,
             animationSpec = if (chromeVisible)
                 tween(240, easing = androidx.compose.animation.core.FastOutSlowInEasing)
@@ -152,7 +159,6 @@ fun NowPlayingScreen(
                 tween(1600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
             label = "idle",
         )
-        val chromeAlpha = 1f - idle
         val backgroundMode = if (screensaverOn && !state.screensaverKeepBackground)
             NowPlayingBackground.BLACK else state.nowPlayingBackground
         DynamicBackground(artworkUrlTemplate = song?.artworkUrl, songKey = song?.id ?: "", beatAnalyzer = playerVm.beatAnalyzer, beatMultiplier = state.beatIntensity, mode = backgroundMode, playing = state.isPlaying, orbSpeed = state.orbSpeed, reduceMotion = state.reduceMotion, lowPower = state.lowPowerMode)
@@ -164,15 +170,6 @@ fun NowPlayingScreen(
             return@Box
         }
 
-        // System clock — top-left
-        var clockText by remember { mutableStateOf("") }
-        LaunchedEffect(Unit) {
-            val fmt = SimpleDateFormat("h:mm a", Locale.getDefault())
-            while (isActive) {
-                clockText = fmt.format(Date())
-                kotlinx.coroutines.delay(1_000)
-            }
-        }
         val sleepLabel = when {
             state.sleepAfterSong -> stringResource(R.string.np_sleep_end_of_song)
             state.sleepTimerEndsAt != null -> {
@@ -185,14 +182,14 @@ fun NowPlayingScreen(
         }
         if (state.showNowPlayingInfo) Row(
             modifier = Modifier.align(Alignment.TopEnd).padding(end = 28.dp, top = 10.dp)
-                .graphicsLayer { alpha = chromeAlpha },
+                .graphicsLayer { alpha = 1f - idle.value },
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (sleepLabel != null) {
                 Text(sleepLabel, style = TextStyle(fontSize = 15.sp, color = Color(0xCCFFFFFF), shadow = Shadow(Color.Black.copy(alpha = 0.8f), blurRadius = 8f)))
             }
-            Text(clockText, style = TextStyle(fontSize = 15.sp, color = Color(0xCCFFFFFF), shadow = Shadow(Color.Black.copy(alpha = 0.8f), blurRadius = 8f)))
+            WallClock()
         }
 
         val playFocus = remember { FocusRequester() }
@@ -273,9 +270,10 @@ fun NowPlayingScreen(
                         // On idle the controls + progress bar fade but still hold their layout space,
                         // which leaves the art sitting high. Ease the whole group DOWN a touch (and a
                         // hair larger) so the artwork + title + artist settle into the visual centre.
-                        val s = 1f + 0.03f * idle
+                        val idleV = idle.value
+                        val s = 1f + 0.03f * idleV
                         scaleX = s; scaleY = s
-                        translationY = idle * 58f
+                        translationY = idleV * 58f
                     },
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -346,12 +344,15 @@ fun NowPlayingScreen(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 38.dp),
                     )
                     // The ⋯ options button is chrome: it fades out with the controls on idle so the
-                    // steady-state view is just artwork + text.
-                    if (chromeAlpha > 0.02f) Surface(
+                    // steady-state view is just artwork + text. derivedStateOf collapses the
+                    // per-frame alpha into a single boolean flip, so the fade doesn't recompose
+                    // this subtree 60×/s just to decide when to unmount the button.
+                    val chromeGone by remember { derivedStateOf { idle.value > 0.98f } }
+                    if (!chromeGone) Surface(
                         onClick = { showOptionsMenu = true; showSleepSubmenu = false },
                         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
                         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0x1AFFFFFF), focusedContainerColor = Color(0x33FFFFFF)),
-                        modifier = Modifier.align(Alignment.CenterEnd).size(32.dp).graphicsLayer { alpha = chromeAlpha },
+                        modifier = Modifier.align(Alignment.CenterEnd).size(32.dp).graphicsLayer { alpha = 1f - idle.value },
                     ) { Box(Modifier.fillMaxSize(), Alignment.Center) {
                         androidx.compose.foundation.Canvas(Modifier.size(18.dp)) {
                             val r = size.minDimension * 0.07f
@@ -385,7 +386,7 @@ fun NowPlayingScreen(
                     try { playFocus.requestFocus() } catch (_: Exception) {}
                 }
                 Row(
-                    modifier = Modifier.graphicsLayer { alpha = chromeAlpha },
+                    modifier = Modifier.graphicsLayer { alpha = 1f - idle.value },
                     horizontalArrangement = Arrangement.spacedBy(30.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -460,7 +461,7 @@ fun NowPlayingScreen(
 
                 // Column, not Box: PlayerProgressBar emits the bar AND a time row, which a Box would
                 // overlap (the elapsed/duration text clipped over the bar).
-                Column(Modifier.graphicsLayer { alpha = chromeAlpha }) {
+                Column(Modifier.graphicsLayer { alpha = 1f - idle.value }) {
                     PlayerProgressBar(
                         progressState = smoothProgress,
                         song = song,
@@ -479,7 +480,7 @@ fun NowPlayingScreen(
             var rightFocused by remember { mutableStateOf(false) }
             val hintAlpha by animateFloatAsState(
                 if (state.showNowPlayingInfo && rightFocused) 1f else 0f, tween(250), label = "panelHint")
-            Column(modifier = Modifier.weight(1f).fillMaxHeight().graphicsLayer { alpha = if (rightIsLyrics) 1f else chromeAlpha }) {
+            Column(modifier = Modifier.weight(1f).fillMaxHeight().graphicsLayer { alpha = if (rightIsLyrics) 1f else 1f - idle.value }) {
                 val label = when {
                     state.isLiveRadio -> ""       // live radio has no queue/lyrics panel
                     showQueue -> stringResource(R.string.np_panel_queue_lyrics)
@@ -699,22 +700,32 @@ private fun FullScreenLyrics(
 }
 
 /**
- * Interpolates smooth 60fps playback position between the ~200ms server
- * polling ticks, so word-by-word lyric animation doesn't stutter.
+ * Interpolates smooth 60fps playback position between the ~1s progress pushes, so word-by-word
+ * lyric animation doesn't stutter.
+ *
+ * Takes the reported position as a `State` and reads it only inside a LaunchedEffect — reading it
+ * as a plain Long parameter would subscribe the caller to the tick and re-run the whole screen.
  */
 @Composable
-private fun rememberSmoothProgressMs(reportedMs: Long, isPlaying: Boolean): androidx.compose.runtime.State<Long> {
+private fun rememberSmoothProgressMs(
+    reportedState: androidx.compose.runtime.State<Long>,
+    isPlaying: Boolean,
+): androidx.compose.runtime.State<Long> {
     val anchorRealMs = remember { mutableLongStateOf(System.currentTimeMillis()) }
-    val anchorPosMs  = remember { mutableLongStateOf(reportedMs) }
+    val anchorPosMs  = remember { mutableLongStateOf(reportedState.value) }
     // Returned as State so callers can defer the read to leaf composables — only the
     // one thing that reads .value (the seek bar, the active word wipe) recomposes per
     // frame, instead of the whole Now Playing tree.
-    val smoothMs = remember { mutableLongStateOf(reportedMs) }
+    val smoothMs = remember { mutableLongStateOf(reportedState.value) }
 
-    LaunchedEffect(reportedMs) {
-        anchorPosMs.longValue  = reportedMs
-        anchorRealMs.longValue = System.currentTimeMillis()
-        smoothMs.longValue = reportedMs
+    LaunchedEffect(reportedState) {
+        // snapshotFlow, not a `reportedState.value` read: the read belongs inside this effect's
+        // coroutine, not in composition.
+        snapshotFlow { reportedState.value }.collect { reportedMs ->
+            anchorPosMs.longValue  = reportedMs
+            anchorRealMs.longValue = System.currentTimeMillis()
+            smoothMs.longValue = reportedMs
+        }
     }
 
     LaunchedEffect(isPlaying) {
@@ -741,16 +752,16 @@ private fun PlayerProgressBar(
     playFocus: FocusRequester,
     player: androidx.media3.common.Player,
 ) {
+    // Per-frame position is read in the DRAW phase below and quantised for the text, so the seek
+    // bar does not recompose 60×/s just to move a 4dp fill.
     val smoothProgressMs = progressState.value
     val duration = song.durationMs.takeIf { it > 0 } ?: 1L
-    val progress = (smoothProgressMs.toFloat() / duration).coerceIn(0f, 1f)
     var seekBarFocused by remember { mutableStateOf(false) }
     var scrubMs by remember(song.id) { mutableLongStateOf(smoothProgressMs) }
     // Keep scrub cursor in sync with playback when not focused
     LaunchedEffect(smoothProgressMs, seekBarFocused) {
         if (!seekBarFocused) scrubMs = smoothProgressMs
     }
-    val scrubProgress = (scrubMs.toFloat() / duration).coerceIn(0f, 1f)
     val noBorder = Border(BorderStroke(0.dp, Color.Transparent))
     Surface(
         onClick = { if (seekBarFocused) { player.seekTo(scrubMs); runCatching { playFocus.requestFocus() } } },
@@ -771,21 +782,49 @@ private fun PlayerProgressBar(
             },
     ) {
         Column(Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
-            Box(modifier = Modifier.fillMaxWidth().height(if (seekBarFocused) 6.dp else 4.dp).clip(RoundedCornerShape(3.dp)).background(Color(0x44FFFFFF))) {
-                Box(modifier = Modifier.fillMaxWidth(progress).fillMaxHeight().background(Color(0xFFFA233B)))
-                if (seekBarFocused) {
-                    Box(modifier = Modifier.fillMaxWidth(scrubProgress).fillMaxHeight().background(Color.White.copy(alpha = 0.35f)))
-                }
-            }
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .height(if (seekBarFocused) 6.dp else 4.dp)
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(Color(0x44FFFFFF))
+                    .drawBehind {
+                        // Read the clock here: only the draw phase re-runs per frame.
+                        val pos = if (seekBarFocused) scrubMs else progressState.value
+                        val frac = (pos.toFloat() / duration).coerceIn(0f, 1f)
+                        drawRect(Color(0xFFFA233B), size = androidx.compose.ui.geometry.Size(size.width * frac, size.height))
+                        if (seekBarFocused) {
+                            val scrubFrac = (scrubMs.toFloat() / duration).coerceIn(0f, 1f)
+                            drawRect(Color.White.copy(alpha = 0.35f),
+                                size = androidx.compose.ui.geometry.Size(size.width * scrubFrac, size.height))
+                        }
+                    },
+            )
         }
     }
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-        Text(
-            if (seekBarFocused) formatMs(scrubMs) else formatMs(smoothProgressMs),
-            style = TextStyle(fontSize = 11.sp, color = if (seekBarFocused) Color.White else Color(0xFFAAAAAA), shadow = Shadow(Color.Black.copy(alpha = 0.8f), blurRadius = 8f))
-        )
+        // Own composable so only this Text re-runs when the second ticks.
+        ElapsedTimeText(progressState = progressState, seekBarFocused = seekBarFocused, scrubMs = scrubMs)
         Text(song.durationFormatted, style = TextStyle(fontSize = 11.sp, color = Color(0xFFAAAAAA), shadow = Shadow(Color.Black.copy(alpha = 0.8f), blurRadius = 8f)))
     }
+}
+
+/** Elapsed time, quantised to whole seconds so the 60 fps clock only recomposes this label. */
+@Composable
+private fun ElapsedTimeText(
+    progressState: androidx.compose.runtime.State<Long>,
+    seekBarFocused: Boolean,
+    scrubMs: Long,
+) {
+    val ms by remember(seekBarFocused) {
+        derivedStateOf {
+            val raw = if (seekBarFocused) scrubMs else progressState.value
+            (raw / 1000L) * 1000L
+        }
+    }
+    Text(
+        formatMs(ms),
+        style = TextStyle(fontSize = 11.sp, color = if (seekBarFocused) Color.White else Color(0xFFAAAAAA), shadow = Shadow(Color.Black.copy(alpha = 0.8f), blurRadius = 8f)),
+    )
 }
 
 /** Looping, muted motion album-art video layered over the static cover. */
@@ -1082,7 +1121,20 @@ private fun DynamicBackground(artworkUrlTemplate: String?, songKey: String, beat
     // attack that settles cleanly with no wobble, so each beat lands once and decays.
     val energyState = animateFloatAsState(rawEnergy.coerceIn(0f, 1f), androidx.compose.animation.core.spring(dampingRatio = 1f, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow), label = "beat")
 
-    val rawBands by beatAnalyzer.bands.collectAsState()
+    // The band flow publishes a NEW FloatArray ~33×/s, and it is read here at composable scope (the
+    // springs below need a target). Quantising the target to 1/32 steps cuts the recompositions by
+    // an order of magnitude — the spring interpolation hides the step entirely.
+    val rawBands by remember(beatAnalyzer) {
+        beatAnalyzer.bands
+            .map { b ->
+                floatArrayOf(
+                    quantizeLevel(b.getOrElse(0) { 0f }),
+                    quantizeLevel(b.getOrElse(1) { 0f }),
+                    quantizeLevel(b.getOrElse(2) { 0f }),
+                )
+            }
+            .distinctUntilChanged { a, b -> a[0] == b[0] && a[1] == b[1] && a[2] == b[2] }
+    }.collectAsState(floatArrayOf(0f, 0f, 0f))
     val bandSpring = androidx.compose.animation.core.spring<Float>(dampingRatio = 0.6f, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
     val band0State = animateFloatAsState(rawBands.getOrElse(0) { 0f }.coerceIn(0f, 1f), bandSpring, label = "bass")
     val band1State = animateFloatAsState(rawBands.getOrElse(1) { 0f }.coerceIn(0f, 1f), bandSpring, label = "vocal")
@@ -1112,6 +1164,26 @@ private fun DynamicBackground(artworkUrlTemplate: String?, songKey: String, beat
         if (!moving) { frozen[0] = t1s.value; frozen[1] = t2s.value; frozen[2] = t3s.value; frozen[3] = t4s.value }
     }
 
+    // Per-frame scratch: the draw phase below runs 60×/s and used to allocate a dozen arrays, a
+    // List per gradient and an Offset per blob — tens of thousands of objects a minute, i.e.
+    // constant GC on a 2 GB box. Everything here is reused; only the brushes (which Compose
+    // caches by value) are still built per frame.
+    val dOrbColors = remember { arrayOfNulls<Color>(3) }
+    val dOrbLevels = remember { FloatArray(3) }
+    val dBandRide = remember { FloatArray(4) }
+    val dColors = remember { arrayOfNulls<Color>(4) }
+    val dCenters = remember { Array(4) { Offset.Zero } }
+    val dNudge = remember { Array(4) { Offset.Zero } }
+    val dAnchorX = remember { floatArrayOf(0.52f, 0.62f, 0.72f) }
+    val dAnchorY = remember { floatArrayOf(0.44f, 0.56f, 0.46f) }
+    val dPhase = remember { floatArrayOf(0f, 2.1f, 4.2f) }
+    val dDrift = remember { FloatArray(3) }
+    val dSizeRide = remember { floatArrayOf(0.75f, 0.85f, 1.05f) }
+    val dBandBaseR = remember { FloatArray(3) }
+    // Constant-colour brushes, rebuilt only when the viewport size changes.
+    val dCircleGradient = remember { arrayOfNulls<Brush>(2) }
+    val dCircleGradientSize = remember { floatArrayOf(0f, 0f) }
+
     // PROJECTOR uses TRUE black; a projector throws light on a wall, so the near-black #050505 lift
     // that stops a panel crushing shadows becomes a visible grey rectangle instead.
     Box(Modifier.fillMaxSize().background(if (projector) Color.Black else Color(0xFF050505))) {
@@ -1131,33 +1203,35 @@ private fun DynamicBackground(artworkUrlTemplate: String?, songKey: String, beat
                 // (fast, high). Each rides an ellipse on its own animator+phase so the composition
                 // never repeats, swells on its band, and glows from a palette colour.
                 // Small drift toward the next accent so colour evolves but each orb keeps its identity.
-                val orbColors = List(3) { i -> lerp(animatedStates[i % n].value, animatedStates[(i + 1) % n].value, 0.05f + 0.10f * floatArrayOf(t1, t2, t3)[i]) }
-                val orbLevels = floatArrayOf(band0State.value * motionAmp, band1State.value * motionAmp, band2State.value * motionAmp)
-                // Pushed right of the album art (which sits in the left column) so no orb hides behind it.
-                val anchorX = floatArrayOf(0.52f, 0.62f, 0.72f)
-                val anchorY = floatArrayOf(0.44f, 0.56f, 0.46f)
-                val phase   = floatArrayOf(0f, 2.1f, 4.2f)
-                val drift   = floatArrayOf(t1, t2, t3)
+                dDrift[0] = t1; dDrift[1] = t2; dDrift[2] = t3
+                for (i in 0 until 3) {
+                    dOrbColors[i] = lerp(animatedStates[i % n].value, animatedStates[(i + 1) % n].value,
+                        0.05f + 0.10f * dDrift[i])
+                }
+                dOrbLevels[0] = band0State.value * motionAmp
+                dOrbLevels[1] = band1State.value * motionAmp
+                dOrbLevels[2] = band2State.value * motionAmp
                 val twoPi = (2.0 * Math.PI).toFloat()
                 // Smaller orbs than the full-screen blobs — a projector glow is a light source, not a
                 // wash. Wider drift so they still roam the frame at the smaller size.
                 // Per-band character so the three read as three: bass is the big slow one, treble the
                 // small snappy one, vocal in between. Each is DIM at rest and swells hard on its band,
                 // so the beat is the difference you see — not a constant wash.
-                val bandBaseR = floatArrayOf(minOf(w, h) * 0.26f, minOf(w, h) * 0.21f, minOf(w, h) * 0.16f)
-                val sizeRide  = floatArrayOf(0.75f, 0.85f, 1.05f)   // treble punches biggest relative to size
+                dBandBaseR[0] = minOf(w, h) * 0.26f
+                dBandBaseR[1] = minOf(w, h) * 0.21f
+                dBandBaseR[2] = minOf(w, h) * 0.16f
                 for (i in 0 until 3) {
-                    val lvl = orbLevels[i]
+                    val lvl = dOrbLevels[i]
                     // Gentler drift so the orbs roam slowly instead of swimming around the frame.
-                    val cx = anchorX[i] * w + cos(drift[i] * twoPi + phase[i]) * 0.08f * w
-                    val cy = anchorY[i] * h + sin(drift[i] * twoPi + phase[i]) * 0.045f * h
+                    val cx = dAnchorX[i] * w + cos(dDrift[i] * twoPi + dPhase[i]) * 0.08f * w
+                    val cy = dAnchorY[i] * h + sin(dDrift[i] * twoPi + dPhase[i]) * 0.045f * h
                     val c = Offset(cx, cy)
-                    val col = orbColors[i]
+                    val col = dOrbColors[i]!!
                     // Halo alpha now RIDES the beat: dim at rest (won't wash the lyrics), bright on the
                     // hit. On true black under Screen blend that's exactly the expressive pulse we want.
                     // Intensity (amp) scales the SWELL, not the base: Calm barely moves, Crazy swings big
                     // and bright. Generous caps so higher tiers stay visibly punchier instead of clipping.
-                    val r = bandBaseR[i] * (1f + (lvl * sizeRide[i] * amp).coerceAtMost(2.2f))
+                    val r = dBandBaseR[i] * (1f + (lvl * dSizeRide[i] * amp).coerceAtMost(2.2f))
                     val haloA = (0.24f + lvl * 0.42f * amp).coerceAtMost(0.9f)
                     drawCircle(
                         brush = Brush.radialGradient(listOf(col.copy(alpha = haloA), col.copy(alpha = 0f)), center = c, radius = r),
@@ -1170,7 +1244,9 @@ private fun DynamicBackground(artworkUrlTemplate: String?, songKey: String, beat
                         val cr = r * 0.34f
                         val core = lerp(col, Color.White, 0.6f)
                         drawCircle(
-                            brush = Brush.radialGradient(listOf(core.copy(alpha = (0.12f + lvl * 0.62f * amp).coerceAtMost(0.92f)), core.copy(alpha = 0f)), center = c, radius = cr),
+                            brush = Brush.radialGradient(
+                                listOf(core.copy(alpha = (0.12f + lvl * 0.62f * amp).coerceAtMost(0.92f)), core.copy(alpha = 0f)),
+                                center = c, radius = cr),
                             radius = cr, center = c, blendMode = BlendMode.Screen,
                         )
                     }
@@ -1202,62 +1278,59 @@ private fun DynamicBackground(artworkUrlTemplate: String?, songKey: String, beat
             // the whole thing into one moving gradient wash. One colour per blob + smaller radius
             // (below) lets the separate colours read as distinct pools, like Apple's oil-painting
             // patches, instead of averaging into a single tint.
-            val colors4 = List(4) { i -> animatedStates[i % n].value }
+            for (i in 0 until 4) dColors[i] = animatedStates[i % n].value
             val eAmp = (energy * amp).coerceIn(0f, 2.2f)
             // Per-corner band ride (projector-mode flavour): each corner breathes on its own
             // frequency band on top of the shared beat, so bass thumps two corners and treble
             // shimmers the other two — the palette pools now read the spectrum, not one pulse.
-            val bandRide = floatArrayOf(
-                band0State.value,   // top-left  → bass
-                band2State.value,   // top-right → treble
-                band1State.value,   // bot-left  → vocal/mid
-                band0State.value,   // bot-right → bass
-            )
+            dBandRide[0] = band0State.value   // top-left  → bass
+            dBandRide[1] = band2State.value   // top-right → treble
+            dBandRide[2] = band1State.value   // bot-left  → vocal/mid
+            dBandRide[3] = band0State.value   // bot-right → bass
             val beatScale = 1f + eAmp * 0.25f
             val beatAlpha = (0.60f + eAmp * 0.20f).coerceAtMost(0.95f)
             // Smaller than the old 0.62 so blobs overlap less and stay recognisably separate colours.
             val r = maxOf(w, h) * 0.42f * beatScale
             val nudge = eAmp * maxOf(w, h) * 0.02f
-            val nudgeOffsets = listOf(
-                Offset( nudge,  nudge * 0.5f),
-                Offset(-nudge, -nudge * 0.7f),
-                Offset( nudge * 0.6f, -nudge),
-                Offset(-nudge * 0.4f,  nudge * 0.8f),
-            )
-            val centers = listOf(
-                Offset(lerp(0.02f, 0.28f, t1) * w, lerp(0.05f, 0.32f, t2) * h),
-                Offset(lerp(0.72f, 0.98f, t2) * w, lerp(0.05f, 0.35f, t3) * h),
-                Offset(lerp(0.05f, 0.30f, t3) * w, lerp(0.68f, 0.95f, t1) * h),
-                Offset(lerp(0.70f, 0.98f, t1) * w, lerp(0.65f, 0.95f, t3) * h),
-            ).mapIndexed { i, c -> c + nudgeOffsets[i] }
-            colors4.take(blobCount).forEachIndexed { i, color ->
-                val ride = (bandRide[i] * amp).coerceIn(0f, 1.6f)
+            dNudge[0] = Offset( nudge,  nudge * 0.5f)
+            dNudge[1] = Offset(-nudge, -nudge * 0.7f)
+            dNudge[2] = Offset( nudge * 0.6f, -nudge)
+            dNudge[3] = Offset(-nudge * 0.4f,  nudge * 0.8f)
+            dCenters[0] = Offset(lerp(0.02f, 0.28f, t1) * w, lerp(0.05f, 0.32f, t2) * h) + dNudge[0]
+            dCenters[1] = Offset(lerp(0.72f, 0.98f, t2) * w, lerp(0.05f, 0.35f, t3) * h) + dNudge[1]
+            dCenters[2] = Offset(lerp(0.05f, 0.30f, t3) * w, lerp(0.68f, 0.95f, t1) * h) + dNudge[2]
+            dCenters[3] = Offset(lerp(0.70f, 0.98f, t1) * w, lerp(0.65f, 0.95f, t3) * h) + dNudge[3]
+            for (i in 0 until blobCount) {
+                val color = dColors[i]!!
+                val ride = (dBandRide[i] * amp).coerceIn(0f, 1.6f)
                 val rr = r * (1f + ride * 0.30f)
                 val aa = (beatAlpha + ride * 0.18f).coerceAtMost(0.98f)
+                val center = dCenters[i]
                 drawCircle(
-                    brush = Brush.radialGradient(
-                        listOf(color.copy(alpha = aa), color.copy(alpha = 0f)),
-                        center = centers[i], radius = rr,
-                    ),
-                    radius = rr, center = centers[i],
+                    brush = Brush.radialGradient(listOf(color.copy(alpha = aa), color.copy(alpha = 0f)), center = center, radius = rr),
+                    radius = rr, center = center,
                     blendMode = BlendMode.Screen,
                 )
             }
-            // Center darkening
-            drawCircle(
-                brush = Brush.radialGradient(
+            // Center darkening — constant colours, so the brush survives across frames (only
+            // rebuilt when the viewport size changes).
+            if (dCircleGradient[0] == null || dCircleGradientSize[0] != w || dCircleGradientSize[1] != h) {
+                dCircleGradientSize[0] = w; dCircleGradientSize[1] = h
+                dCircleGradient[0] = Brush.radialGradient(
                     listOf(Color(0x77000000), Color(0x00000000)),
                     center = Offset(w * 0.5f, h * 0.5f), radius = maxOf(w, h) * 0.55f,
-                ),
+                )
+                dCircleGradient[1] = Brush.horizontalGradient(
+                    listOf(Color(0x00000000), Color(0x7A000000)),
+                    startX = w * 0.35f, endX = w,
+                )
+            }
+            drawCircle(
+                brush = dCircleGradient[0]!!,
                 radius = maxOf(w, h) * 0.55f, center = Offset(w * 0.5f, h * 0.5f),
             )
             // Right-side darkening for lyrics readability
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    listOf(Color(0x00000000), Color(0x7A000000)),
-                    startX = w * 0.35f, endX = w,
-                ),
-            )
+            drawRect(brush = dCircleGradient[1]!!)
             // Kept low: the flat veil mutes every hue equally, so readability comes
             // from the right-side gradient above instead.
             drawRect(Color(0x22000000))
@@ -1267,6 +1340,27 @@ private fun DynamicBackground(artworkUrlTemplate: String?, songKey: String, beat
 
 /** Idle time (no D-pad navigation) before the Now Playing chrome auto-hides (then a 2 s settle). */
 private const val CHROME_HIDE_MS = 7000L
+
+/**
+ * The wall clock in the corner. Its own composable so the once-a-second tick recomposes one
+ * Text instead of re-running the whole Now Playing tree (which is what happened while the
+ * ticker wrote a local state read at screen scope).
+ */
+@Composable
+private fun WallClock() {
+    var clockText by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        val fmt = SimpleDateFormat("h:mm a", Locale.getDefault())
+        while (isActive) {
+            clockText = fmt.format(Date())
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
+    Text(
+        clockText,
+        style = TextStyle(fontSize = 15.sp, color = Color(0xCCFFFFFF), shadow = Shadow(Color.Black.copy(alpha = 0.8f), blurRadius = 8f)),
+    )
+}
 
 /** D-pad navigation / select keys — the ones allowed to wake the auto-hidden chrome. Media transport
  *  keys are deliberately excluded so play/pause/skip don't bring the controls back. */
@@ -1283,6 +1377,9 @@ private const val LYRIC_BOTTOM_MARGIN_PX = 40
 private const val GAP_THRESHOLD_MS = 4000L
 private const val LINE_END_GRACE_MS = 250L
 private const val GAP_FADEOUT_MS    = 500L
+
+/** Snap a 0..1 band level to 1/32 steps so its StateFlow stops emitting on inaudible changes. */
+private fun quantizeLevel(v: Float): Float = kotlin.math.round(v.coerceIn(0f, 1f) * 32f) / 32f
 
 
 @OptIn(ExperimentalTvMaterial3Api::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
@@ -1662,7 +1759,10 @@ private fun LyricLineRow(
                         isPast   -> TextStyle(color = Color(0xFFCCCCCC), fontSize = (18.5f * fontScale).sp, fontWeight = FontWeight.SemiBold, lineHeight = (24f * fontScale).sp, letterSpacing = (-0.2).sp)
                         else     -> TextStyle(color = Color(0xFF8E8E93), fontSize = (18.5f * fontScale).sp, fontWeight = FontWeight.SemiBold, lineHeight = (24f * fontScale).sp, letterSpacing = (-0.2).sp)
                     }
-                    Text(text = AnnotatedString(line.text), style = style)
+                    // remember: this row recomposes on every progress tick while it's the
+                    // active line, and a fresh AnnotatedString each time defeats text caching.
+                    val lineText = remember(line.text) { AnnotatedString(line.text) }
+                    Text(text = lineText, style = style)
                 }
 
                 val bg = line.background
@@ -1690,7 +1790,7 @@ private fun LyricLineRow(
                             )
                         } else {
                             Text(
-                                text = AnnotatedString(bg.text),
+                                text = remember(bg.text) { AnnotatedString(bg.text) },
                                 style = TextStyle(
                                     fontSize = 19.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -2008,6 +2108,8 @@ private fun MarqueeText(
 }
 
 private fun formatMs(ms: Long): String {
-    val s = ms / 1000
-    return "%d:%02d".format(s / 60, s % 60)
+    val s = (ms / 1000).coerceAtLeast(0)
+    val m = s / 60
+    val sec = s % 60
+    return if (sec < 10) "$m:0$sec" else "$m:$sec"
 }

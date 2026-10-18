@@ -21,6 +21,8 @@ import com.applemusicktv.ui.viewmodel.PlayerViewModel
 fun NowPlayingBar(playerVm: PlayerViewModel, modifier: Modifier = Modifier) {
     val vm = playerVm
     val state by vm.state.collectAsState()
+    // Own flow so the once-a-second position tick doesn't recompose every PlayerState reader.
+    val progressMs by vm.progressMs.collectAsState()
     val song = state.currentSong ?: return
 
     Surface(
@@ -53,14 +55,14 @@ fun NowPlayingBar(playerVm: PlayerViewModel, modifier: Modifier = Modifier) {
 
             Column(modifier = Modifier.width(220.dp)) {
                 val progress = if (state.song?.durationMs ?: 0L > 0)
-                    (state.progressMs.toFloat() / (state.song?.durationMs ?: 1L)).coerceIn(0f, 1f)
+                    (progressMs.toFloat() / (state.song?.durationMs ?: 1L)).coerceIn(0f, 1f)
                 else 0f
 
                 Box(modifier = Modifier.fillMaxWidth().height(3.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF2A2A2A))) {
                     Box(modifier = Modifier.fillMaxWidth(progress).fillMaxHeight().background(Color(0xFFFA233B)))
                 }
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(formatMs(state.progressMs), fontSize = 9.sp, color = Color(0xFF555555))
+                    Text(formatMs(progressMs), fontSize = 9.sp, color = Color(0xFF555555))
                     Text(song.durationFormatted, fontSize = 9.sp, color = Color(0xFF555555))
                 }
             }

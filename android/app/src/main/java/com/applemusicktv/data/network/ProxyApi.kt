@@ -1,5 +1,6 @@
 package com.applemusicktv.data.network
 
+import androidx.compose.runtime.Immutable
 import com.squareup.moshi.JsonClass
 import retrofit2.http.*
 
@@ -142,9 +143,11 @@ data class LibraryPlaylistsResponse(val playlists: List<PlaylistDto> = emptyList
 @JsonClass(generateAdapter = true)
 data class LibraryArtistsResponse(val artists: List<ArtistDto> = emptyList())
 
+@Immutable
 @JsonClass(generateAdapter = true)
 data class LyricWord(val startMs: Long, val endMs: Long, val text: String)
 
+@Immutable
 @JsonClass(generateAdapter = true)
 data class LyricBackground(
     val startMs: Long,
@@ -153,6 +156,7 @@ data class LyricBackground(
     val words:   List<LyricWord> = emptyList(),
 )
 
+@Immutable
 @JsonClass(generateAdapter = true)
 data class LyricLine(
     val startMs:    Long,

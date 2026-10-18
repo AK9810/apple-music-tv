@@ -95,8 +95,12 @@ class InAppWebServer @Inject constructor(
         addLog("OK", "Web server stopped")
     }
 
+    // Shared formatter (SimpleDateFormat is not thread-safe — guard it). addLog runs many times
+    // per second during playback; a new formatter each call was pure garbage on the audio path.
+    private val logTimeFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
+
     fun addLog(level: String, msg: String) {
-        val t = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
+        val t = synchronized(logTimeFormat) { logTimeFormat.format(Date()) }
         val line = "[$t][$level] $msg"
         synchronized(logs) {
             if (logs.size >= 300) logs.removeFirst()

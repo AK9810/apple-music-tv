@@ -1,5 +1,13 @@
 package com.applemusicktv.data.model
 
+import androidx.compose.runtime.Immutable
+
+/**
+ * A queue / track-list row. `@Immutable` keeps the Compose compiler from treating it as unstable
+ * (it holds a `List<String>`), which is what lets long track lists skip re-composing every row on
+ * each focus change or state tick.
+ */
+@Immutable
 data class Song(
     val id:             String,
     val title:          String,
@@ -25,8 +33,15 @@ data class Song(
         ?.replace("{h}", "$size")
         ?.replace("{f}", "jpg")
 
-    val durationFormatted: String get() {
+    /**
+     * "m:ss" — computed once. `String.format` costs ~10 µs and this is read by every visible row on
+     * every recomposition; a 300-track list was spending real time on it while scrolling.
+     * `lazy` keeps it out of equals/hashCode/copy, so the data class semantics are unchanged.
+     */
+    val durationFormatted: String by lazy {
         val s = durationMs / 1000
-        return "%d:%02d".format(s / 60, s % 60)
+        val m = s / 60
+        val sec = s % 60
+        if (sec < 10) "$m:0$sec" else "$m:$sec"
     }
 }

@@ -1,5 +1,13 @@
 package com.applemusicktv.data.model
 
+import androidx.compose.runtime.Immutable
+
+/**
+ * A shelf item. `@Immutable` matters for performance: without it the `List<String>` field makes
+ * this class *unstable* to the Compose compiler, so every AlbumCard re-composed whenever its row
+ * did — visible as jank while D-padding through a shelf on Fire TV.
+ */
+@Immutable
 data class Album(
     val id:             String,
     val title:          String,

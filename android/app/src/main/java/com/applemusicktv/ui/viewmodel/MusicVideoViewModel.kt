@@ -91,23 +91,56 @@ class MusicVideoViewModel @Inject constructor(
 
     private val prefs = context.getSharedPreferences("mv_prefs", Context.MODE_PRIVATE)
 
-    /** A/V-sync delay for the video, shared with the audio player's setting: the Bluetooth estimate
-     *  (when Automatic is on and a BT output is live) plus the user's extra offset. Read live per
-     *  frame so plugging BT in/out or nudging the offset applies instantly. Microseconds. */
+    /**
+     * A/V-sync delay for the video, shared with the audio player's setting: the Bluetooth estimate
+     * (when Automatic is on and a BT output is live) plus the user's extra offset.
+     *
+     * Read from the video renderer's media clock — i.e. several times per second — so it must not
+     * touch a binder-backed system service each call. The BT flag is refreshed by the same
+     * AudioDeviceCallback the audio player uses, and the offset by a prefs StateFlow; the value is
+     * just an arithmetic read of two volatiles. Microseconds.
+     */
+    @Volatile private var avOnBluetooth: Boolean = false
+    @Volatile private var avExtraMs: Long = 0L
+    /** In-memory prefs handle — a map lookup, unlike a binder round-trip. */
+    private val playerPrefs = context.getSharedPreferences("player_state", Context.MODE_PRIVATE)
+
     private fun avVideoDelayUs(): Long {
-        val avAuto = context.getSharedPreferences("player_state", Context.MODE_PRIVATE)
-            .getBoolean("av_auto", true)
-        val am = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-        val btTypes = setOf(
-            android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
-            android.media.AudioDeviceInfo.TYPE_BLE_HEADSET, android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER,
-        )
-        val onBt = runCatching {
-            am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS).any { it.type in btTypes }
-        }.getOrDefault(false)
-        val btDelta = if (onBt && avAuto) 350L else 0L
-        return (btDelta + lyricsOffsetPrefs.getOffset()).coerceAtLeast(0) * 1000L
+        val auto = playerPrefs.getBoolean("av_auto", true)
+        val btDelta = if (avOnBluetooth && auto) 350L else 0L
+        return (btDelta + avExtraMs).coerceAtLeast(0) * 1000L
     }
+
+    private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager }
+
+    private val btDeviceTypes = setOf(
+        android.media.AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, android.media.AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+        android.media.AudioDeviceInfo.TYPE_BLE_HEADSET, android.media.AudioDeviceInfo.TYPE_BLE_SPEAKER,
+    )
+
+    /** One-shot device query (binder call) — only on construction and on device changes. */
+    private fun refreshBtState() {
+        avOnBluetooth = runCatching {
+            audioManager.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS).any { it.type in btDeviceTypes }
+        }.getOrDefault(false)
+    }
+
+    private var audioDeviceCallback: android.media.AudioDeviceCallback? = null
+
+    init {
+        // Seed the A/V-sync inputs once, then follow changes instead of re-querying the audio
+        // service per video frame (getDevices is a binder call — it was running several times a
+        // second during video playback).
+        avExtraMs = lyricsOffsetPrefs.getOffset()
+        refreshBtState()
+        viewModelScope.launch { lyricsOffsetPrefs.offsetMs.collect { avExtraMs = it } }
+        audioDeviceCallback = object : android.media.AudioDeviceCallback() {
+            override fun onAudioDevicesAdded(added: Array<android.media.AudioDeviceInfo>) { refreshBtState() }
+            override fun onAudioDevicesRemoved(removed: Array<android.media.AudioDeviceInfo>) { refreshBtState() }
+        }
+        runCatching { audioManager.registerAudioDeviceCallback(audioDeviceCallback, null) }
+    }
+
     private var qualityHeight = prefs.getInt("quality_height", 1080)
     // HDCP ceiling learned from this display: Apple requires an active HDCP link for protected HD.
     // When a tier fails with "Required output protections are not active" we cap here so the next
@@ -599,7 +632,11 @@ class MusicVideoViewModel @Inject constructor(
 
     fun release() = releasePlayer()
 
-    override fun onCleared() { release() }
+    override fun onCleared() {
+        audioDeviceCallback?.let { cb -> runCatching { audioManager.unregisterAudioDeviceCallback(cb) } }
+        audioDeviceCallback = null
+        release()
+    }
 
     private fun langName(code: String?): String? {
         if (code.isNullOrBlank() || code == "und") return null
