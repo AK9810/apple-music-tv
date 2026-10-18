@@ -18,11 +18,16 @@ android/build/
 android/app/build/
 android/captures/
 android/local.properties
+.kotlin/
 *.apk
 *.aab
 *.keystore
 *.jks
 .cxx/
+
+# ─── Python / server tooling (downloaded or created locally) ─────────
+.venv/
+server/.bento4/
 
 # ─── IDE / OS ─────────────────────────────────────────────────────────
 .idea/
