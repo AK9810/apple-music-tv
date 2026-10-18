@@ -6,8 +6,8 @@
 
 **A native Apple Music experience for Fire TV, Android TV, and Google TV.**
 
-[![Download APK](https://img.shields.io/badge/Download-APK-FA233B?style=for-the-badge&logo=android&logoColor=white)](https://github.com/JObersi10/apple-music-tv/releases/download/dev/app-debug.apk)
-[![Releases](https://img.shields.io/badge/All-Releases-333?style=for-the-badge&logo=github&logoColor=white)](https://github.com/JObersi10/apple-music-tv/releases)
+[![Download APK](https://img.shields.io/badge/Download-APK-FA233B?style=for-the-badge&logo=android&logoColor=white)](https://github.com/AK9810/apple-music-tv/releases/download/dev/app-debug.apk)
+[![Releases](https://img.shields.io/badge/All-Releases-333?style=for-the-badge&logo=github&logoColor=white)](https://github.com/AK9810/apple-music-tv/releases)
 
 ![status](https://img.shields.io/badge/status-active-brightgreen) ![platform](https://img.shields.io/badge/platform-Fire%20TV%20%7C%20Android%20TV%20%7C%20Google%20TV-blue) ![license](https://img.shields.io/badge/license-GPL--3.0-blue)
 
@@ -54,7 +54,7 @@
 
 ## Installation
 
-1. **Download the APK** — [latest build](https://github.com/JObersi10/apple-music-tv/releases/download/dev/app-debug.apk) or pick one from [Releases](https://github.com/JObersi10/apple-music-tv/releases).
+1. **Download the APK** — [latest build](https://github.com/AK9810/apple-music-tv/releases/download/dev/app-debug.apk) or pick one from [Releases](https://github.com/AK9810/apple-music-tv/releases).
 2. **Sideload it** onto your Fire TV / Android TV:
    ```bash
    adb connect <TV_IP>
