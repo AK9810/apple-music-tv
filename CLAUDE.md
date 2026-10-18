@@ -39,6 +39,14 @@ GitHub Actions (`.github/workflows/android.yml`) builds the debug APK on every p
 - No `composeOptions` block needed with Kotlin 2.x compose plugin
 - `SurfaceDefaults.shape(...)` doesn't work — pass `RoundedCornerShape(...)` directly
 
+## Localisation (i18n)
+- Two UI languages: English (`res/values/strings.xml`, default) and Simplified Chinese (`res/values-zh/strings.xml`). All user-facing copy goes through `stringResource(...)` / `R.string` — no literals in composables. Key naming: `<screen>_<element>`, shared words under `common_*` / `nav_*`.
+- The language is a per-app locale via `AppCompatDelegate.setApplicationLocales()` (`util/AppLanguage.kt`: SYSTEM → ENGLISH → CHINESE). **`MainActivity` must stay `AppCompatActivity`** — below API 33 the backport only re-creates AppCompat-hosted activities. Manifest carries `android:localeConfig` (system picker, API 33+) and the `androidx.appcompat.app.AppCompatDelegate.application_locales_auto_storage` meta-data (persists the choice below API 33).
+- Switching re-creates the activity: ViewModels, NavHost and playback survive; plain `remember` UI state (scroll position, temp fields) does not. Settings → Language and onboarding step 1 both switch immediately.
+- ViewModels never resolve UI strings themselves — they emit `util/UiString(res, args)` (toasts, music-video errors) and the UI resolves with its Activity context. Notifications resolve via `AppLanguage.localizedContext(context)` because application-context resources keep the SYSTEM locale below API 33.
+- Deliberately English: Logs panel / `addLog` output (developer-facing), the :8080 phone page HTML, and Apple **content** language (`language: en-US` requests, shelf titles from the API). Content localisation belongs to the 1.5 CN-network work.
+- Adding copy: add the key to BOTH resource files. `values-zh` covers every zh variant (Simplified only). Formatted strings use positional args (`%1$s` / `%1$d`).
+
 ## Auth / MUT flow
 - **Music-User-Token (MUT)** — required for full streams, lyrics, personal library
 - Android stores MUT in `MutPreferences` (SharedPreferences)
@@ -195,7 +203,8 @@ Library items: artwork may be in `relationships.catalog.data[0].attributes.artwo
 
 ## First-run setup (onboarding)
 - `OnboardingPreferences` (`onboarding_prefs`, versioned via `CURRENT_VERSION` so a new step doesn't replay the whole flow). `AppShell` shows `OnboardingScreen` instead of the nav shell until `completed`.
-- 5 steps: server IP + health check → token pairing → remote type → crossfade → tips.
+- 5 steps: language → token pairing (MUT) → remote type → crossfade → tips. The language step is first so the rest of the wizard renders in the chosen language; picking one re-creates the activity mid-flow (the ViewModel survives, the step stays).
+- Users who completed an older version (`completedVersion > 0 && !completed`) see ONLY the language step — its button reads Done and finishes setup (`returningUser` in `OnboardingViewModel`). Bump `CURRENT_VERSION` when adding a step.
 - **The IP is a button, not a live text field.** A focused `BasicTextField` opens the Fire TV IME by itself, and `SoftwareKeyboardController.hide()` is a **no-op on Fire TV** — dismissal must also call `InputMethodManager.hideSoftInputFromWindow`. Press OK to edit, Done/Back to close.
 - Step 2 polls for the token and auto-advances **only on a false→true transition**. It counts only the *on-device* MUT: the proxy persists its own copy in `auth-state.json`, so asking the server reports a token that isn't there.
 - `restoreState()` is gated on `completed` — otherwise a first-run user gets audio behind the setup screen.
