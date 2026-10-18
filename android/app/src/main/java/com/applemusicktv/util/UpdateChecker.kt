@@ -28,7 +28,9 @@ data class UpdateInfo(
  * fetches the APK and `install()` hands it to the system package installer.
  */
 object UpdateChecker {
-    private const val REPO = "JObersi10/apple-music-tv"
+    // This fork's releases — the upstream (JObersi10) stopped publishing when development
+    // moved here, so fork builds would otherwise be offered the upstream's stale builds.
+    private const val REPO = "AK9810/apple-music-tv"
     private const val LATEST = "https://api.github.com/repos/$REPO/releases/latest"
     private const val ALL = "https://api.github.com/repos/$REPO/releases?per_page=15"
 
