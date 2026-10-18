@@ -1,10 +1,12 @@
 # Now Playing Dynamic Background — How It's Made
 
+**English** | [简体中文](dynamic_background_tutorial.zh-CN.md)
+
 The full story of the fluid color backdrop behind the Now Playing screen: the
 process, the design decisions, and the code. Everything lives in one composable file:
-[`NowPlayingScreen.kt`](android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt),
+[`NowPlayingScreen.kt`](../android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt),
 with beat data coming from
-[`BeatAnalyzer.kt`](android/app/src/main/java/com/applemusicktv/media/BeatAnalyzer.kt).
+[`BeatAnalyzer.kt`](../android/app/src/main/java/com/applemusicktv/media/BeatAnalyzer.kt).
 
 ---
 
@@ -18,7 +20,7 @@ pulses gently with the music's beat.
 
 Why no blurred image? A blurred bitmap pixelates when upscaled on a TV and needs a
 hardware blur that is a no-op on Fire TV (API < 31). A canvas gradient is resolution-
-independent and cheap. See [`DynamicBackground`](android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt:586).
+independent and cheap. See [`DynamicBackground`](../android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt#L586).
 
 ---
 
@@ -46,7 +48,7 @@ center + right-side darkening (lyrics readability)
 ```
 
 ### Step A — Load artwork and extract a palette
-[`rememberArtworkPalette`](android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt:536)
+[`rememberArtworkPalette`](../android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt#L536)
 
 - The artwork template (`{w}x{h}bb.{f}`) is filled to **1200×1200 jpg**. The palette
   is always taken from the **static** cover, never the motion-art video URL.
@@ -70,13 +72,13 @@ The **value ceiling is the important one**. A pale, high-value swatch reads as l
 grey and competes with the white lyrics on top. Capping value (and flooring
 saturation) forces deep, saturated colors that read as *color*, not haze. A plain
 saturation *filter* was tried and removed — it stripped vivid pinks and teals.
-Constants: [`SAT_BOOST`/`SAT_FLOOR`/`VALUE_CEILING`](android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt:530).
+Constants: [`SAT_BOOST`/`SAT_FLOOR`/`VALUE_CEILING`](../android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt#L530).
 
 **Do not push `VALUE_CEILING` past ~0.85** — that's the line where the backdrop
 starts washing out the lyrics.
 
 ### Step C — Spread the colors around the hue wheel
-[`spreadByHue`](android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt:508)
+[`spreadByHue`](../android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt#L508)
 
 Picks up to 6 colors that are each **≥28° apart** in hue, so the four blobs don't all
 end up the same shade of one color. If fewer than 6 pass the spacing test, the
@@ -85,7 +87,7 @@ remaining slots are filled with the closest non-duplicates.
 ---
 
 ## 3. Rendering the blobs
-[`DynamicBackground`](android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt:586)
+[`DynamicBackground`](../android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt#L586)
 
 ### Color cross-fade on song change
 Each palette color is wrapped in `animateColorAsState(tween(1500))`, so when the song
@@ -123,7 +125,7 @@ Inside a single `drawBehind`:
 
 ## 4. Beat reactivity
 
-The pulse comes from [`BeatAnalyzer`](android/app/src/main/java/com/applemusicktv/media/BeatAnalyzer.kt),
+The pulse comes from [`BeatAnalyzer`](../android/app/src/main/java/com/applemusicktv/media/BeatAnalyzer.kt),
 a `@Singleton` bus exposing `energy: StateFlow<Float>`.
 
 - Each ExoPlayer instance gets its **own** `BeatProcessor` (a Media3
@@ -173,7 +175,7 @@ The Fire TV Stick 4K is weak, so the backdrop is deliberately capped:
 ## 6. Motion (animated) album art
 
 Separate from the backdrop: when `GET /api/motion/:songId` returns a URL,
-[`MotionCover`](android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt:430)
+[`MotionCover`](../android/app/src/main/java/com/applemusicktv/ui/screens/NowPlayingScreen.kt#L430)
 plays a muted, looping square video over the static cover. Note the palette is still
 extracted from the **static** artwork URL, not the video. The green-flash fix keeps
 `setShutterBackgroundColor(BLACK)` and re-arms a `ready` flag on resume — never use

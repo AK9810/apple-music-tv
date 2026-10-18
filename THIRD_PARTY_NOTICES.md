@@ -1,5 +1,7 @@
 # Third-Party Notices
 
+**English** | [简体中文](docs/THIRD_PARTY_NOTICES.zh-CN.md)
+
 Apple Music TV is licensed under **GPL-3.0** (see [LICENSE](LICENSE)). It uses the
 third-party projects listed below. Each retains its own license; those licenses
 apply to those components, not to the rest of this project.

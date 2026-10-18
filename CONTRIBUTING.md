@@ -1,5 +1,7 @@
 # Contributing
 
+**English** | [简体中文](docs/CONTRIBUTING.zh-CN.md)
+
 Thanks for your interest. This is a personal / educational project, but PRs and issues are welcome.
 
 ## Getting set up

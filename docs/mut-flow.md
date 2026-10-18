@@ -1,5 +1,7 @@
 # MUT Flow — Search, Library, Playlist Tracks
 
+**English** | [简体中文](mut-flow.zh-CN.md)
+
 ## Where MUT lives
 
 - **Android**: `MutPreferences` (SharedPreferences). OkHttp interceptor in `NetworkModule` adds `X-Music-User-Token` header to every Retrofit request automatically.

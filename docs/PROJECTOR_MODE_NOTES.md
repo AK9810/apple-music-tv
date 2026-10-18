@@ -1,5 +1,7 @@
 # Projector Mode — what AMTV does differently
 
+**English** | [简体中文](PROJECTOR_MODE_NOTES.zh-CN.md)
+
 Context for another AI: the reference guide (PhairPlay's `docs/PROJECTOR_MODE.md`) describes
 the *original* projector mode. This file lists where the Apple Music TV (AMTV) implementation
 **diverges** from it. If you're porting, read the reference for the shared skeleton, then apply

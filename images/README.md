@@ -1,5 +1,7 @@
 # Images
 
+**English** | [简体中文](README.zh-CN.md)
+
 Screenshots and art referenced by the root README. Drop your own captures here with these exact names:
 
 | File | Screen |

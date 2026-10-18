@@ -6,6 +6,8 @@
 
 **A native Apple Music experience for Fire TV, Android TV, and Google TV.**
 
+**English** | [简体中文](docs/README.zh-CN.md)
+
 [![Download APK](https://img.shields.io/badge/Download-APK-FA233B?style=for-the-badge&logo=android&logoColor=white)](https://github.com/AK9810/apple-music-tv/releases/download/dev/AppleMusicTV-dev.apk)
 [![Releases](https://img.shields.io/badge/All-Releases-333?style=for-the-badge&logo=github&logoColor=white)](https://github.com/AK9810/apple-music-tv/releases)
 

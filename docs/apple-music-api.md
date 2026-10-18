@@ -1,5 +1,7 @@
 # Apple Music API — Complete Reverse-Engineering Guide
 
+**English** | [简体中文](apple-music-api.zh-CN.md)
+
 No Apple Developer account. No MusicKit JS. Everything scraped or inferred from `music.apple.com` traffic.
 
 ---

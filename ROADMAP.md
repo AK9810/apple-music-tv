@@ -1,5 +1,7 @@
 # Roadmap
 
+**English** | [简体中文](docs/ROADMAP.zh-CN.md)
+
 Rough direction, not a promise. Roughly ordered by impact.
 
 ## Planned / exploring

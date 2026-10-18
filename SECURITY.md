@@ -1,5 +1,7 @@
 # Security
 
+**English** | [简体中文](docs/SECURITY.zh-CN.md)
+
 ## Your tokens
 
 - Your **Music-User-Token (MUT)** grants full access to your Apple Music library and account. **Treat it like a password.** Never share it, paste it into untrusted tools, or commit it.

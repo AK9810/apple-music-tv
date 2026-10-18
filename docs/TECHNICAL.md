@@ -1,5 +1,7 @@
 # Technical details
 
+**English** | [简体中文](TECHNICAL.zh-CN.md)
+
 Everything below used to live in the README. It's here so the front page stays about *using* the app; this page is for building and understanding it.
 
 ## Modes
