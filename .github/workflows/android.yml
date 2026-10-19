@@ -60,8 +60,10 @@ jobs:
       # distinguishable instead of every release handing out the same "app-debug.apk":
       #   tag push (stable)  → AppleMusicTV-v1.5.apk
       #   main / PR (dev)    → AppleMusicTV-1.5-dev-<sha>.apk
-      # Dev builds also get a stable alias (AppleMusicTV-dev.apk) because the rolling dev
-      # release is deleted and re-created on every push, so the README link can't pin a sha.
+      # Dev builds also get a fixed alias (AppleMusicTV-dev.apk) because the rolling dev
+      # release is deleted and re-created on every push, so a link can't pin a sha.
+      # Stable builds get the same treatment as AppleMusicTV.apk: the README's download badge
+      # links to releases/latest/download/AppleMusicTV.apk, which needs no edit per release.
       # A main push also stages AppleMusicTV-v<version>.apk, for the version-bump release below.
       - name: Stage versioned APK
         id: apk
@@ -80,6 +82,7 @@ jobs:
           cp "$SRC" "dist/$NAME"
           # `cp file file` exits non-zero ("are the same file") and `run:` is bash -e.
           if [[ "$STABLE" != "$NAME" ]]; then cp "$SRC" "dist/$STABLE"; fi
+          cp "$SRC" dist/AppleMusicTV.apk
           echo "version=${VERSION:-unknown}" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "stable=$STABLE" >> "$GITHUB_OUTPUT"
@@ -161,7 +164,9 @@ jobs:
           # of every version cut, and its heading should match the version being released.
           body_path: RELEASE_NOTES.md
           prerelease: false
-          files: android/dist/${{ steps.apk.outputs.stable }}
+          files: |
+            android/dist/${{ steps.apk.outputs.stable }}
+            android/dist/AppleMusicTV.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -184,6 +189,8 @@ jobs:
             commit ${{ github.sha }}
           body_path: RELEASE_NOTES.md
           prerelease: false
-          files: android/dist/${{ steps.apk.outputs.name }}
+          files: |
+            android/dist/${{ steps.apk.outputs.name }}
+            android/dist/AppleMusicTV.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

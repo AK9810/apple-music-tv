@@ -8,7 +8,7 @@
 
 [English](../README.md) | **简体中文**
 
-[![下载 APK](https://img.shields.io/badge/Download-APK-FA233B?style=for-the-badge&logo=android&logoColor=white)](https://github.com/AK9810/apple-music-tv/releases/download/dev/AppleMusicTV-dev.apk)
+[![下载 APK](https://img.shields.io/badge/Download-APK-FA233B?style=for-the-badge&logo=android&logoColor=white)](https://github.com/AK9810/apple-music-tv/releases/latest/download/AppleMusicTV.apk)
 [![所有版本](https://img.shields.io/badge/All-Releases-333?style=for-the-badge&logo=github&logoColor=white)](https://github.com/AK9810/apple-music-tv/releases)
 
 ![status](https://img.shields.io/badge/status-active-brightgreen) ![platform](https://img.shields.io/badge/platform-Fire%20TV%20%7C%20Android%20TV%20%7C%20Google%20TV-blue) ![license](https://img.shields.io/badge/license-GPL--3.0-blue)
@@ -56,11 +56,11 @@
 
 ## 安装
 
-1. **下载 APK** —— [最新构建](https://github.com/AK9810/apple-music-tv/releases/download/dev/AppleMusicTV-dev.apk)，或从 [Releases](https://github.com/AK9810/apple-music-tv/releases) 中挑选一个版本。
+1. **下载 APK** —— [最新稳定版](https://github.com/AK9810/apple-music-tv/releases/latest/download/AppleMusicTV.apk)，或从 [Releases](https://github.com/AK9810/apple-music-tv/releases) 中挑选一个版本。`AppleMusicTV.apk` 这个链接始终指向最新的稳定构建，版本号变了也不用改地址。
 2. **侧载到你的 Fire TV / Android TV**：
    ```bash
    adb connect <TV_IP>
-   adb install -r AppleMusicTV-dev.apk
+   adb install -r AppleMusicTV.apk
    ```
    （也可以使用 Downloader 之类的侧载应用，直接填入 Release 下载地址。）
 3. **添加你的 Music-User-Token** —— 在手机上打开 `http://<TV_IP>:8080` 并粘贴。 [如何获取 Token →](TECHNICAL.zh-CN.md#获取你的-music-user-token)

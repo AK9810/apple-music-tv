@@ -31,6 +31,8 @@ GitHub Actions (`.github/workflows/android.yml`) builds the debug APK on every p
 
 **Version bumps release themselves.** A push to `main` whose `versionName` has no matching `v<version>` release yet creates that tag (at the pushed commit) and publishes the stable release in the *same* workflow run, with `RELEASE_NOTES.md` as the body and `AppleMusicTV-v<version>.apk` as the asset. It has to run inline: a tag pushed with `GITHUB_TOKEN` does not trigger a new workflow run. So a version cut is just: bump `versionCode` + `versionName` in `app/build.gradle.kts`, rewrite `RELEASE_NOTES.md` (its heading must name the new version), commit, merge to `main`. The tag-push path stays for explicit/manual tags and re-releases. The in-app `UpdateChecker` polls **this repo's** releases (`AK9810/apple-music-tv`), not the upstream's.
 
+**Download links are version-agnostic.** Every stable release also carries a fixed-name `AppleMusicTV.apk`, and the README badges link to `releases/latest/download/AppleMusicTV.apk`. Never point a download link at `releases/download/dev/...` (that is the rolling prerelease, which lags a stable cut) or at a versioned asset name — either would need editing on every release, which is exactly how the badge once kept serving an old build.
+
 ## Build config
 - AGP 8.7.0, Kotlin 2.1.20, KSP 2.1.20-1.0.31, Gradle 8.9, Hilt 2.56
 - JDK: Android Studio's bundled JBR (`.../Contents/Home`)

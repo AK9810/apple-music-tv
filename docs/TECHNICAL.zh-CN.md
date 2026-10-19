@@ -110,7 +110,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 **Android APK** 工作流（[`.github/workflows/android.yml`](../.github/workflows/android.yml)）在每次推送到 `main` 的 push/PR 以及手动触发时运行。每次运行都会配置 JDK 17 + SDK、写入默认的 `local.properties`、运行单元测试、构建 debug APK，然后以带版本号的文件名暂存：tag 构建为 `AppleMusicTV-<tag>.apk`，分支构建为 `AppleMusicTV-<versionName>-dev-<sha>.apk`。推送到 `main` 时，它还会刷新滚动的 **`dev`** 预发布（每次推送都删除并重建，使其排在 Releases 列表顶部）。
 
-**获取 APK：** 仓库 **Releases** → 最新构建 → `AppleMusicTV-dev.apk`（始终指向最新 dev 构建的固定别名，无需登录），或某次运行的 **Actions → Artifacts**。稳定版的文件名带版本号，例如 `AppleMusicTV-v1.4.apk`。用 `adb install -r <下载的文件>.apk` 侧载。
+**获取 APK：** README 的下载铭牌指向 `releases/latest/download/AppleMusicTV.apk` —— 每个稳定版都会附带这个固定文件名，因此它始终提供最新的稳定构建，版本号变化时无需改动链接。也可以到仓库 **Releases** 里挑选具体版本（`AppleMusicTV-v1.5.apk` 等）、从某次运行的 **Actions → Artifacts** 下载，或用 `dev` 预发布上滚动的 `AppleMusicTV-dev.apk` 别名获取 `main` 的最新构建。用 `adb install -r <下载的文件>.apk` 侧载。
 
 ### 发布版本（以及应用内更新器）
 

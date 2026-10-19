@@ -110,7 +110,7 @@ Requirements: Android Studio / SDK (compileSdk 35), JDK 17, a TV device with ADB
 
 The **Android APK** workflow ([`.github/workflows/android.yml`](../.github/workflows/android.yml)) runs on every push/PR to `main` and on manual dispatch. Each run sets up JDK 17 + the SDK, writes a default `local.properties`, runs unit tests, builds the debug APK, then stages it under a version-carrying filename: `AppleMusicTV-<tag>.apk` on a tag push, `AppleMusicTV-<versionName>-dev-<sha>.apk` on branches. On pushes to `main` it also refreshes the rolling **`dev`** pre-release (deleted + re-created each push so it sorts to the top of the Releases list).
 
-**Getting the APK:** repo **Releases** → latest build → `AppleMusicTV-dev.apk` (a fixed alias for the newest dev build, no login), or a specific run's **Actions → Artifacts**. Stable releases carry the version in the filename, e.g. `AppleMusicTV-v1.4.apk`. Sideload with `adb install -r <downloaded file>.apk`.
+**Getting the APK:** the README's download badge points at `releases/latest/download/AppleMusicTV.apk` — a fixed name attached to every stable release, so it always serves the newest stable build and never needs editing when the version changes. You can also browse repo **Releases** for a specific version (`AppleMusicTV-v1.5.apk`, …), grab a specific run's **Actions → Artifacts**, or use the rolling `AppleMusicTV-dev.apk` alias on the `dev` pre-release for the newest `main` build. Sideload with `adb install -r <downloaded file>.apk`.
 
 ### Cutting a versioned release (and the in-app updater)
 
