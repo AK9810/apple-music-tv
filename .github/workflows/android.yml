@@ -7,6 +7,8 @@ on:
     # A version-like tag (v1.4, 1.4, …) additionally publishes a STABLE release — the
     # branches and tags filters are OR'd for push events. The `dev` tag deliberately does
     # NOT match these patterns, so recreating it never re-triggers this workflow.
+    # Pushing to main with a NEW versionName in app/build.gradle.kts auto-creates the
+    # matching `v<version>` tag and stable release, so the two can't drift apart.
     branches: [ main ]
     tags: [ 'v[0-9]*', '[0-9]*' ]
   pull_request:
@@ -56,24 +58,31 @@ jobs:
 
       # Copy the Gradle output to a version-carrying filename, so release downloads are
       # distinguishable instead of every release handing out the same "app-debug.apk":
-      #   tag push (stable)  → AppleMusicTV-v1.4.apk
-      #   main / PR (dev)    → AppleMusicTV-1.4-dev-<sha>.apk
+      #   tag push (stable)  → AppleMusicTV-v1.5.apk
+      #   main / PR (dev)    → AppleMusicTV-1.5-dev-<sha>.apk
       # Dev builds also get a stable alias (AppleMusicTV-dev.apk) because the rolling dev
       # release is deleted and re-created on every push, so the README link can't pin a sha.
+      # A main push also stages AppleMusicTV-v<version>.apk, for the version-bump release below.
       - name: Stage versioned APK
         id: apk
         run: |
           mkdir -p dist
           SRC=app/build/outputs/apk/debug/app-debug.apk
+          VERSION=$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
             NAME="AppleMusicTV-${GITHUB_REF_NAME}.apk"
+            STABLE="$NAME"
           else
-            VERSION=$(sed -n 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n1)
             NAME="AppleMusicTV-${VERSION:-unknown}-dev-${GITHUB_SHA:0:7}.apk"
+            STABLE="AppleMusicTV-v${VERSION:-unknown}.apk"
             cp "$SRC" dist/AppleMusicTV-dev.apk
           fi
           cp "$SRC" "dist/$NAME"
+          # `cp file file` exits non-zero ("are the same file") and `run:` is bash -e.
+          if [[ "$STABLE" != "$NAME" ]]; then cp "$SRC" "dist/$STABLE"; fi
+          echo "version=${VERSION:-unknown}" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "stable=$STABLE" >> "$GITHUB_OUTPUT"
           echo "base=${NAME%.apk}" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK artifact
@@ -114,9 +123,53 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Keep the stable release in lockstep with `main`: if this push changed versionName,
+      # no release exists for it yet, so cut one now. Without this, a bumped version merged
+      # to main silently kept pointing at the previous stable release and the in-app stable
+      # updater (which reads /releases/latest) never saw it.
+      # It runs in THIS workflow run, not by pushing a tag and letting the tag path re-trigger:
+      # a tag pushed with GITHUB_TOKEN does not start a new workflow run.
+      - name: Check for an existing release of this version
+        id: version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          V="${{ steps.apk.outputs.version }}"
+          # Guard the sed-parse failure path: never create a "vunknown" release.
+          if [[ ! "$V" =~ ^[0-9] ]]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Could not parse versionName — skipping the version release."
+          elif gh release view "v$V" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release v$V already exists — not cutting another."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "No release for v$V yet — publishing it."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish release for a new version on main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          # Creates the tag at this commit if it doesn't exist yet, so `main` and the
+          # release always name the same build.
+          tag_name: v${{ steps.apk.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: "Apple Music TV v${{ steps.apk.outputs.version }}"
+          # Same notes source as the tag path below: RELEASE_NOTES.md is rewritten as part
+          # of every version cut, and its heading should match the version being released.
+          body_path: RELEASE_NOTES.md
+          prerelease: false
+          files: android/dist/${{ steps.apk.outputs.stable }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # A pushed version tag publishes a STABLE (non-prerelease) release. The in-app
       # stable channel resolves /releases/latest, which only ever returns non-prereleases,
       # so a version tag without this step is invisible to the updater.
+      # Kept for explicit/manual tag pushes (and re-releasing an old tag); a normal version
+      # bump merged to main is already published by the step above.
       - name: Publish stable release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2

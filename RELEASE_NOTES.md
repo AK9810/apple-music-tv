@@ -1,24 +1,15 @@
-# Apple Music TV — v1.4
+# Apple Music TV — v1.5
 
-- Everything from the 1.3/1.4 roadmap lands together: a bilingual UI, big memory and smoothness wins on low-RAM TVs, and the streaming pipeline overhaul (256 kbps tier, 8× faster cold start).
+- The app now quits when you leave it: no cached process, no idle decoders, no background audio — sized for the 1.5–2 GB boxes these TVs actually ship with.
 
-*🌐 Languages*
-English and Simplified Chinese UI — switch in Settings → Language or during onboarding; the choice is remembered per app.
-All menus, settings, lyrics and dialogs are translated; Apple's content (album/song titles, editorial shelves) stays in English.
+*🧹 Memory & lifecycle*
+Leaving the app — Home, recents, switching apps, or the TV going to standby — saves the session, stops playback and ends the process, so nothing stays resident holding the Widevine CDM, the decoders and the artwork caches.
+Being *covered* still only pauses: the TV's ambient screensaver or a system overlay won't kill playback, so the :8080 phone page keeps working while the TV idles.
+Every launch is now a cold start; Now Playing still restores the last track, paused, at the position you left it.
 
-*🎵 Streaming & Audio (proxy server)*
-The 256 kbps high-quality tier actually plays now — an asset-priority bug had quietly served the 64 kbps HE-AAC stream instead.
-Lossless detection is by real codec (ffprobe), not a bitrate guess, so only genuine ALAC/FLAC gets transcoded.
-Byte-range manifests are sliced locally instead of re-downloading the same file up to 17×.
-Streaming works behind a system proxy (decryptor no longer inherits and breaks on local MITM proxies).
-Cold start cut ~8× (≈20 s → 2.5–4 s): segments are fetched and decrypted in parallel with the manifest work.
+*🗑️ Removed*
+Background playback and its toggle (Dev menu and the phone web page) — it contradicted quitting on exit.
+System Picture-in-Picture: the manifest flag, the PiP params/remote action and the minimal PiP view. Music videos still play audio-only when you navigate away from Now Playing.
 
-*⚡ Performance (2 GB TVs)*
-Memory peak during browse/playback trimmed and recomposition churn reduced — measurably smoother scrolling and playback on Fire TV Stick-class hardware.
-
-*🔄 Updates*
-The in-app updater now tracks this repo's releases (the upstream stopped publishing).
-Version tags (e.g. `v1.4`) automatically publish a stable release with the APK; `main` keeps publishing the rolling dev build.
-
-*🐛 Fixes*
-CI builds green again on current runners (setup-android v4).
+*🔧 Under the hood*
+The session snapshot on exit is written synchronously and in order, before the player is stopped — so the restored position is the one you actually left, not 0.

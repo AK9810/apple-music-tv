@@ -21,7 +21,7 @@ Native Apple Music client for Fire TV / Android TV / Google TV (personal, educat
 | `server/src/` | Bun+Hono proxy: `routes/` per domain, `auth.ts` (bearer scrape/refresh), `stream.ts` (decrypt + serve) |
 | `server/stream_decrypt.py` | CENC decrypt + ffmpeg remux, called by the stream route |
 | `token-server/generate-token.js` | Apple MusicKit developer-token helper |
-| `.github/workflows/android.yml` | CI: builds debug APK on every push/PR, publishes rolling `dev` pre-release on pushes to `main`, and a stable release when a version tag (`v1.4`, …) is pushed |
+| `.github/workflows/android.yml` | CI: builds debug APK on every push/PR, publishes rolling `dev` pre-release on pushes to `main`, and a stable release when a version tag (`v1.4`, …) is pushed — a `main` push that bumps `versionName` also cuts its stable release automatically, in the same run |
 
 ## Build / run
 
