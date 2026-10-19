@@ -68,9 +68,6 @@
     <string name="settings_volume_leveling">Volume leveling</string>
     <string name="settings_volume_leveling_on">Even out loudness across tracks</string>
     <string name="settings_volume_leveling_off">Play each track at its own level</string>
-    <string name="settings_background_play">Background play</string>
-    <string name="settings_background_play_on">Keep playing when you leave the app</string>
-    <string name="settings_background_play_off">Pause when the app goes to the background</string>
 
     <!-- Settings: now playing -->
     <string name="settings_background">Background</string>
@@ -246,7 +243,7 @@
     <string name="onboarding_tip_scrub_title">Jump around inside a song</string>
     <string name="onboarding_tip_scrub_body">Press down until the thin bar lights up. Left and right move 10 seconds at a time, OK jumps to that spot.</string>
     <string name="onboarding_tip_dots_title">The ··· button is your settings</string>
-    <string name="onboarding_tip_dots_body">Sleep timer, shuffle, repeat, Full-Screen Lyrics, the ambient screensaver, Picture-in-Picture — all live here.</string>
+    <string name="onboarding_tip_dots_body">Sleep timer, shuffle, repeat, Full-Screen Lyrics, the ambient screensaver — all live here.</string>
     <string name="onboarding_tip_projector_title">Projector mode — let the room breathe</string>
     <string name="onboarding_tip_projector_body">An ambient mode: the lights go down to black and the album\'s own colours drift across the whole TV. No controls, no clutter — just the music, made a little bigger. Turn it on from the ··· menu and let it play.</string>
     <string name="onboarding_tip_mv_title">Music videos, full-screen</string>

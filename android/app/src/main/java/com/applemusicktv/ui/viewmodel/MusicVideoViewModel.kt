@@ -182,8 +182,8 @@ class MusicVideoViewModel @Inject constructor(
     }
 
     // Whether a video is currently loaded/active. Hoisted in AppShell so the video survives
-    // navigation: it plays fullscreen on the Now Playing tab and shrinks to an in-app PiP
-    // window on any other tab — it never gets torn down by leaving a route.
+    // navigation: it plays fullscreen on the Now Playing tab and keeps playing audio-only on any
+    // other tab — it never gets torn down by leaving a route.
     private val _active = MutableStateFlow(false)
     val active: StateFlow<Boolean> = _active
 

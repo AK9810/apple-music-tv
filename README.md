@@ -29,7 +29,7 @@
 - **Now Playing** with a live album-colour background and **word-by-word synced lyrics**.
 - **Artist pages, playlists, albums** — full catalog navigation.
 - **Music videos** and **radio / stations** — all playable.
-- **Background playback** and an ambient **screensaver**.
+- **An ambient screensaver** while a track plays — leaving the app stops playback and ends the process, so nothing lingers on a low-RAM TV.
 - **Runs standalone on the TV** — a pure-Kotlin Widevine pipeline decrypts each song on-device, no computer required. An optional PC proxy server is also supported.
 
 ---

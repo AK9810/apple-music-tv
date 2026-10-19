@@ -176,10 +176,6 @@ data class PlayerState(
     val isLiveRadio: Boolean              = false,
     /** Station cover, shown on the Now Playing art when a live station is paused. */
     val radioStationArt: String?          = null,
-    /** Keep audio playing when the app goes to the background / home is pressed. */
-    val backgroundPlayEnabled: Boolean    = true,
-    /** True while the activity is in Picture-in-Picture (renders the minimal PiP view). */
-    val isInPip:          Boolean         = false,
 )
 
 /** Hidden LYRICS baseline: the Fire TV shows the lyric line ~200 ms before you hear the word even over
@@ -305,6 +301,9 @@ class PlayerViewModel @Inject constructor(
     // True while the on-device (Widevine) path is driving playback, so the
     // error handler doesn't bounce back to the proxy in a loop.
     private var usingStandalone: Boolean = false
+
+    /** Set by [stopForExit]: the session snapshot is final and no later save may overwrite it. */
+    private var exiting = false
 
     /** Held so onCleared can unregister it — AudioManager outlives this ViewModel. */
     private var audioDeviceCallback: AudioDeviceCallback? = null
@@ -988,6 +987,30 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun saveState() {
+        // Serialise + write OFF the main thread: a 1000-track queue is a multi-hundred-KB JSON
+        // string, and this used to run on Main at every track change (a visible hitch) and on
+        // every 10 s tick. Serial execution also keeps the writes ordered, so the newest state
+        // is always the one on disk.
+        if (exiting) return
+        runCatching { saveExecutor.execute { runCatching { persistState(sync = false) } } }
+    }
+
+    /**
+     * Final snapshot for the exit path, written on the save thread and WAITED for.
+     * Submitting (rather than writing inline) puts it behind any auto-save already queued, so a
+     * stale position can't land after it; waiting matters because the process dies right after.
+     */
+    private fun saveStateBlocking() {
+        runCatching {
+            saveExecutor.submit { runCatching { persistState(sync = true) } }
+                .get(500, java.util.concurrent.TimeUnit.MILLISECONDS)
+        }
+    }
+
+    private fun persistState(sync: Boolean) {
+        // Set by stopForExit once its snapshot is taken: nothing may write again (onCleared()
+        // runs right after and would store position 0, because stop() already reset the player).
+        if (exiting) return
         val s = _state.value
         val song = s.currentSong ?: return
         // Mid-crossfade _state already points at the NEXT song while `player` is still
@@ -997,49 +1020,31 @@ class PlayerViewModel @Inject constructor(
         // A deferred restore hasn't loaded the player yet (position would read 0) — keep the saved
         // state untouched until the user actually plays it.
         if (pendingRestore != null) return
-        val posMs = player.currentPosition
-        val queue = s.queue
-        val queueIndex = s.queueIndex
-        val fullStream = s.isFullStream
-        val beat = s.beatIntensity
-        val crossfade = s.crossfadeEnabled
-        val bgPlay = s.backgroundPlayEnabled
-        // Serialise + write OFF the main thread: a 1000-track queue is a multi-hundred-KB JSON
-        // string, and this used to run on Main at every track change (a visible hitch) and on
-        // every 10 s tick. Serial execution also keeps the writes ordered, so the newest state
-        // is always the one on disk.
-        runCatching {
-            saveExecutor.execute {
-                runCatching {
-                    val songJson  = songJsonAdapter.toJson(song)
-                    val queueJson = queueJsonAdapter.toJson(queue)
-                    prefs.edit {
-                        putString("song",  songJson)
-                        putString("queue", queueJson)
-                        putInt("queue_index", queueIndex)
-                        putLong("position_ms", posMs)
-                        putBoolean("full_stream", fullStream)
-                        putFloat("beat_intensity", beat)
-                        putBoolean("crossfade_enabled", crossfade)
-                        putBoolean("background_play", bgPlay)
-                    }
-                }
-            }
+        val songJson  = songJsonAdapter.toJson(song)
+        val queueJson = queueJsonAdapter.toJson(s.queue)
+        prefs.edit(commit = sync) {
+            putString("song",  songJson)
+            putString("queue", queueJson)
+            putInt("queue_index", s.queueIndex)
+            putLong("position_ms", player.currentPosition)
+            putBoolean("full_stream", s.isFullStream)
+            putFloat("beat_intensity", s.beatIntensity)
+            putBoolean("crossfade_enabled", s.crossfadeEnabled)
         }
     }
 
-    /** True when the app should keep playing after it leaves the foreground. */
-    val backgroundPlayEnabled: Boolean get() = _state.value.backgroundPlayEnabled
-
-    fun toggleBackgroundPlay() {
-        val next = !_state.value.backgroundPlayEnabled
-        _state.update { it.copy(backgroundPlayEnabled = next) }
-        prefs.edit { putBoolean("background_play", next) }
+    /**
+     * The app is quitting (see MainActivity.exitApp). Save the session before touching the
+     * player — [player.stop] resets the position — then go silent. Restore on the next launch
+     * still shows the same track, paused, at the same spot.
+     */
+    fun stopForExit() {
+        if (exiting) return
+        saveStateBlocking()
+        exiting = true
+        stopPlayback()
+        player.clearMediaItems()
     }
-
-    /** Called by the activity when it enters/leaves Picture-in-Picture. */
-    fun setPipMode(on: Boolean) { _state.update { it.copy(isInPip = on) } }
-
     private fun restoreState() = viewModelScope.launch {
         val songJson = prefs.getString("song", null) ?: return@launch
         if (hasPlayedSomething) return@launch
@@ -1059,14 +1064,13 @@ class PlayerViewModel @Inject constructor(
             val full  = hasMUT()
             val crossfade = prefs.getBoolean("crossfade_enabled", true)
             val screensaverMin = prefs.getInt("screensaver_min", 10)
-            val bgPlay = prefs.getBoolean("background_play", true)
             val npBg = NowPlayingBackground.fromName(prefs.getString("np_background", null))
             val beat      = prefs.getFloat(intensityKey(npBg), 1.0f)
             val keepBg = prefs.getBoolean("screensaver_keep_bg", false)
             val npInfo = prefs.getBoolean("np_info", true)
             val motionArt = prefs.getBoolean("motion_art", false)
             com.applemusicktv.media.GainProcessor.enabled = prefs.getBoolean("volume_leveling", false)
-            _state.update { it.copy(currentSong = song, song = song, queue = queue, queueIndex = idx, isFullStream = full, beatIntensity = beat, crossfadeEnabled = crossfade, screensaverTimeoutMin = screensaverMin, backgroundPlayEnabled = bgPlay, nowPlayingBackground = npBg, screensaverKeepBackground = keepBg, showNowPlayingInfo = npInfo, motionArtworkEnabled = motionArt,
+            _state.update { it.copy(currentSong = song, song = song, queue = queue, queueIndex = idx, isFullStream = full, beatIntensity = beat, crossfadeEnabled = crossfade, screensaverTimeoutMin = screensaverMin, nowPlayingBackground = npBg, screensaverKeepBackground = keepBg, showNowPlayingInfo = npInfo, motionArtworkEnabled = motionArt,
                 orbSpeed = prefs.getFloat("orb_speed", 1.0f), lyricsScale = prefs.getFloat("lyrics_scale", 1.0f), artworkRounded = prefs.getBoolean("artwork_rounded", true), reduceMotion = prefs.getBoolean("reduce_motion", false), lowPowerMode = prefs.getBoolean("low_power", false), volumeLeveling = prefs.getBoolean("volume_leveling", false)) }
             publishProgress(posMs)
             // A restored music video must go to the video player, NOT the audio stream — otherwise
@@ -1205,9 +1209,8 @@ class PlayerViewModel @Inject constructor(
     }
 
     /**
-     * Hard stop for a real app exit (the "Exit" confirmation). `moveTaskToBack`/`finish` alone leave
-     * this ViewModel — and its ExoPlayer — alive in the background, so the audio kept playing; stop
-     * the output explicitly so exiting actually stops the music.
+     * Silence the audio engine. Used by [stopForExit] on a real quit, and by the sleep timer;
+     * the ExoPlayer instance itself lives on (MainActivity kills the process right after exit).
      */
     fun stopPlayback() {
         player.pause()

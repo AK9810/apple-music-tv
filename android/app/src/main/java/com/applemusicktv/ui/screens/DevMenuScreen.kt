@@ -111,11 +111,6 @@ fun DevMenuScreen(
                 sub = stringResource(if (pstate.volumeLeveling) R.string.settings_volume_leveling_on else R.string.settings_volume_leveling_off),
                 onToggle = { playerVm.toggleVolumeLeveling() },
             )
-            Toggle(
-                label = stringResource(R.string.settings_background_play), on = pstate.backgroundPlayEnabled,
-                sub = stringResource(if (pstate.backgroundPlayEnabled) R.string.settings_background_play_on else R.string.settings_background_play_off),
-                onToggle = { playerVm.toggleBackgroundPlay() },
-            )
 
             // ── NOW PLAYING ───────────────────────────────────────────────
             SectionLabel(stringResource(R.string.settings_section_now_playing))
@@ -267,10 +262,11 @@ fun DevMenuScreen(
                     ActionBtn(stringResource(R.string.common_refresh), Color(0xFF2A2A2A), small = true) { vm.refresh(onDone = onDataRefresh) }
                     ActionBtn(stringResource(R.string.settings_replay_setup), Color(0xFF2A2A1A), small = true) { playerVm.resetOnboarding() }
                     ActionBtn(stringResource(R.string.settings_clear_token), Color(0xFF3A1A1A), small = true) { vm.clearMUT() }
-                    // Hard quit: stop playback + kill the process so the next launch is a true cold start.
+                    // Hard quit: same path as the Exit dialog — save the session, stop playback,
+                    // then end the process so the next launch is a true cold start.
                     ActionBtn(stringResource(R.string.settings_force_quit), Color(0xFF3A1A1A), small = true) {
-                        playerVm.stopPlayback()
-                        android.os.Process.killProcess(android.os.Process.myPid())
+                        (ctx as? com.applemusicktv.MainActivity)?.exitApp()
+                            ?: android.os.Process.killProcess(android.os.Process.myPid())
                     }
                 }
 
@@ -471,9 +467,16 @@ private fun UpdatesSection(initialUpdate: UpdateInfo? = null) {
         ctx.packageManager.canRequestPackageInstalls()
 
     fun installOrRequestGrant(apk: java.io.File) {
+        // The installer / settings screen is another app: tell the activity this stop is not a
+        // user "leave", or onStop would quit and kill the process mid-update.
+        val activity = ctx as? com.applemusicktv.MainActivity
+        fun launchExternally(block: () -> Unit) {
+            if (activity == null) block() else activity.launchExternally(block)
+        }
         if (hasGrant()) {
             prefs().edit().putBoolean("pending_install", false).apply()
-            UpdateChecker.install(ctx, apk); return
+            launchExternally { UpdateChecker.install(ctx, apk) }
+            return
         }
         // Park across a possible recreation: remember we owe an install, keep the APK on disk.
         prefs().edit().putBoolean("pending_install", true).apply()
@@ -482,8 +485,10 @@ private fun UpdatesSection(initialUpdate: UpdateInfo? = null) {
         // The per-app screen isn't always present on Fire OS; fall back to the generic intent rather
         // than throwing ActivityNotFoundException at someone who was only trying to update.
         val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, pkgUri)
-        runCatching { ctx.startActivity(intent) }.onFailure {
-            runCatching { ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)) }
+        launchExternally {
+            runCatching { ctx.startActivity(intent) }.onFailure {
+                runCatching { ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)) }
+            }
         }
     }
 
@@ -498,7 +503,9 @@ private fun UpdatesSection(initialUpdate: UpdateInfo? = null) {
                 if (apk.exists() && apk.length() > 0) {
                     prefs().edit().putBoolean("pending_install", false).apply()
                     status = null
-                    UpdateChecker.install(ctx, apk)
+                    val activity = ctx as? com.applemusicktv.MainActivity
+                    val install = { UpdateChecker.install(ctx, apk) }
+                    if (activity == null) install() else activity.launchExternally(install)
                 }
             }
         }

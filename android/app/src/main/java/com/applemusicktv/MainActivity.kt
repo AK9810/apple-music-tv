@@ -1,30 +1,19 @@
 package com.applemusicktv
 
-import android.app.PendingIntent
-import android.app.PictureInPictureParams
-import android.app.RemoteAction
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.content.res.Configuration
-import android.graphics.drawable.Icon
-import android.os.Build
 import android.os.Bundle
-import android.util.Rational
+import android.os.Handler
+import android.os.Looper
+import android.os.PowerManager
+import android.os.Process
 import android.view.KeyEvent
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import com.applemusicktv.ui.AppShell
 import com.applemusicktv.ui.viewmodel.MusicVideoViewModel
 import com.applemusicktv.ui.viewmodel.NavigationViewModel
 import com.applemusicktv.ui.viewmodel.PlayerViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 // AppCompatActivity (not ComponentActivity) is load-bearing for per-app language: below
 // API 33 AppCompatDelegate only re-creates AppCompat-hosted activities when the locale
@@ -36,98 +25,93 @@ class MainActivity : AppCompatActivity() {
     private val playerVm: PlayerViewModel by viewModels()
     private val mvVm: MusicVideoViewModel by viewModels()
 
-    private val pipActionName = "com.applemusicktv.PIP_TOGGLE"
-    private var pipReceiver: BroadcastReceiver? = null
+    /** Guards [exitApp] — onStop follows the finish(), and re-entering would double-save/kill. */
+    private var exiting = false
+
+    /** Set by [onUserLeaveHint]: the next stop is the user leaving (Home / another app). */
+    private var userLeaving = false
+
+    /**
+     * Another app's screen we opened ourselves (APK installer, unknown-sources grant) is up.
+     * That stop is not the user leaving us for good, so [onStop] only pauses.
+     */
+    private var leavingForExternalApp = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent { AppShell() }
-        // Keep the PiP play/pause button's icon in sync while we're in PiP (the track can
-        // pause/resume on its own, e.g. at end of queue).
-        lifecycleScope.launch {
-            playerVm.state.map { it.isPlaying }.distinctUntilChanged().collect {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode) {
-                    runCatching { setPictureInPictureParams(pipParams()) }
-                }
-            }
-        }
     }
 
-    /** PiP params with a single play/pause remote action wired to a broadcast we handle. */
-    private fun pipParams(): PictureInPictureParams {
-        val playing = playerVm.state.value.isPlaying
-        val icon = Icon.createWithResource(
-            this,
-            if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
-        )
-        // PiP remote-action label (activity context, so per-app language applies).
-        val label = if (playing) getString(R.string.common_pause) else getString(R.string.common_play)
-        val pi = PendingIntent.getBroadcast(
-            this, 0,
-            Intent(pipActionName).setPackage(packageName),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        return PictureInPictureParams.Builder()
-            .setAspectRatio(Rational(16, 9))
-            .setActions(listOf(RemoteAction(icon, label, label, pi)))
-            .build()
+    /**
+     * Quit for real: save the session, silence audio + video, remove the task and end the
+     * process. On a 1.5–2 GB Fire TV a cached background process still pins the Widevine CDM,
+     * the decoders, the Coil caches and the phone web server's sockets — leaving the app should
+     * hand all of that back. Every launch is therefore a cold start; PlayerViewModel.restoreState()
+     * brings the last track back (paused) from the saved state.
+     */
+    fun exitApp() {
+        if (exiting) return
+        exiting = true
+        // Save FIRST: stop() resets the player position, and the process dies milliseconds later.
+        runCatching { playerVm.stopForExit() }
+        // A music video runs on its own player, so stopping the audio one leaves its output going.
+        runCatching { playerVm.clearVideoRequest(); mvVm.close() }
+        runCatching { finishAndRemoveTask() }
+        // finishAndRemoveTask() is an async binder call to the activity manager; give it (and the
+        // committed prefs) a moment to land before the process disappears.
+        Handler(Looper.getMainLooper()).postDelayed({ Process.killProcess(Process.myPid()) }, EXIT_KILL_DELAY_MS)
     }
 
-    /** Enter Picture-in-Picture. May be unsupported on some Fire TV hardware — harmless no-op there. */
-    fun enterPip() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        runCatching { enterPictureInPictureMode(pipParams()) }
+    /**
+     * Run [action] knowing it opens another app's UI (APK installer, the installer-permission
+     * screen). The stop that follows is not the user leaving us for good, so [onStop] only
+     * pauses. Returns true if the launch happened; a failure drops the exemption again so the
+     * next real exit still quits.
+     */
+    fun launchExternally(action: () -> Unit): Boolean {
+        leavingForExternalApp = true
+        return runCatching(action).isSuccess.also { if (!it) leavingForExternalApp = false }
     }
 
-    /** Home / recents while on Now Playing → drop into PiP. Anywhere else, just keep playing. */
+    override fun onResume() {
+        super.onResume()
+        userLeaving = false
+        leavingForExternalApp = false
+    }
+
+    /**
+     * Home / recents / "open another app" — the user is leaving, which on this app means quit.
+     * Being *covered* (the TV's ambient screensaver, a system overlay, another activity we
+     * started) does NOT call this, which is exactly right: those must not kill the process, or
+     * the :8080 page could not be used to set the token while the TV idles.
+     */
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
-        // Only drop into PiP when something is actually PLAYING — a paused song/video should just
-        // background quietly, not pop a frozen PiP tile.
-        val playing = playerVm.state.value.isPlaying || mvVm.state.value.playing
-        if ((navVm.isOnNowPlaying || navVm.isOnMusicVideo) && playing && !isInPictureInPictureMode) enterPip()
+        userLeaving = true
     }
 
-    override fun onPictureInPictureModeChanged(isInPip: Boolean, newConfig: Configuration) {
-        super.onPictureInPictureModeChanged(isInPip, newConfig)
-        playerVm.setPipMode(isInPip)
-        if (isInPip) {
-            // Register a receiver for the PiP button so its taps actually toggle playback.
-            if (pipReceiver == null) {
-                pipReceiver = object : BroadcastReceiver() {
-                    override fun onReceive(c: Context?, i: Intent?) {
-                        if (i?.action == pipActionName) {
-                            playerVm.togglePlayPause()
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode) {
-                                runCatching { setPictureInPictureParams(pipParams()) }
-                            }
-                        }
-                    }
-                }
-                val filter = IntentFilter(pipActionName)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    registerReceiver(pipReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-                } else {
-                    @Suppress("UnspecifiedRegisterReceiverFlag")
-                    registerReceiver(pipReceiver, filter)
-                }
-            }
-        } else {
-            pipReceiver?.let { runCatching { unregisterReceiver(it) } }
-            pipReceiver = null
-        }
-    }
-
+    /**
+     * Leaving quits the app — no background playback, no media service, no system PiP, and no
+     * cached process holding the decoders. Exceptions:
+     *  - a configuration change (the per-app language switch) re-creates the activity and must
+     *    keep the ViewModels — and the playing audio — alive;
+     *  - an external screen we launched ourselves only pauses;
+     *  - standby (display off) counts as leaving, so a sleeping TV doesn't keep the process.
+     */
     override fun onStop() {
         super.onStop()
-        // Background audio is for Picture-in-Picture only: leaving the app any other way pauses.
-        if (!isInPictureInPictureMode) playerVm.pause()
+        if (exiting || isChangingConfigurations) return
+        if (leavingForExternalApp) { playerVm.pause(); return }
+        val screenOff = runCatching {
+            !(getSystemService(POWER_SERVICE) as PowerManager).isInteractive
+        }.getOrDefault(false)
+        if (userLeaving || screenOff) exitApp() else playerVm.pause()
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         // While a video is active, media keys drive the VIDEO — never the (paused) audio
         // player. D-pad keys still fall through so the fullscreen video screen (or the UI
-        // behind an in-app PiP) can handle them.
+        // behind it) can handle them.
         if (navVm.isOnMusicVideo) {
             if (event.action == KeyEvent.ACTION_DOWN) when (event.keyCode) {
                 KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { mvVm.next(); return true }
@@ -161,5 +145,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    private companion object {
+        /** Long enough for finishAndRemoveTask() and the committed prefs to reach the system. */
+        const val EXIT_KILL_DELAY_MS = 250L
     }
 }

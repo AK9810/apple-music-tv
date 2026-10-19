@@ -64,9 +64,6 @@
     <string name="settings_volume_leveling">音量均衡</string>
     <string name="settings_volume_leveling_on">统一各曲目的响度</string>
     <string name="settings_volume_leveling_off">按各曲目的原始音量播放</string>
-    <string name="settings_background_play">后台播放</string>
-    <string name="settings_background_play_on">离开应用时继续播放</string>
-    <string name="settings_background_play_off">应用进入后台时暂停</string>
 
     <!-- Settings: now playing -->
     <string name="settings_background">背景</string>
@@ -242,7 +239,7 @@
     <string name="onboarding_tip_scrub_title">在歌曲中跳转</string>
     <string name="onboarding_tip_scrub_body">按下方向键下，直到细条亮起。左右每次移动 10 秒，按 OK 跳转到该位置。</string>
     <string name="onboarding_tip_dots_title">··· 按钮就是你的设置</string>
-    <string name="onboarding_tip_dots_body">睡眠定时、随机播放、循环、全屏歌词、环境屏幕保护、画中画 — 都在这里。</string>
+    <string name="onboarding_tip_dots_body">睡眠定时、随机播放、循环、全屏歌词、环境屏幕保护 — 都在这里。</string>
     <string name="onboarding_tip_projector_title">投影模式 — 让房间呼吸</string>
     <string name="onboarding_tip_projector_body">一种氛围模式：画面暗至纯黑，专辑自身的色彩在整个电视上流动。没有控件，没有杂乱 — 只有音乐，更沉浸一点。从 ··· 菜单开启后让它播放。</string>
     <string name="onboarding_tip_mv_title">音乐视频，全屏播放</string>

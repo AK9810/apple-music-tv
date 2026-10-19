@@ -35,11 +35,6 @@ import com.applemusicktv.ui.viewmodel.LibraryViewModel
 import com.applemusicktv.ui.viewmodel.NavigationViewModel
 import com.applemusicktv.ui.viewmodel.PlayerViewModel
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.TextStyle
-import coil.compose.AsyncImage
-import com.applemusicktv.data.model.Song
 import androidx.compose.material3.Text
 
 @Composable
@@ -48,7 +43,7 @@ fun AppShell(modifier: Modifier = Modifier) {
     var selectedTab   by remember { mutableStateOf(TopNavTab.ListenNow) }
     val playerVm: PlayerViewModel  = hiltViewModel()
     val navVm: NavigationViewModel = hiltViewModel()
-    // Hoisted so the video survives navigation: fullscreen on Now Playing, in-app PiP elsewhere.
+    // Hoisted so the video survives navigation: fullscreen on Now Playing, audio-only elsewhere.
     val mvVm: com.applemusicktv.ui.viewmodel.MusicVideoViewModel = hiltViewModel()
     val navBarFocus = remember { FocusRequester() }
     val videoFocus = remember { FocusRequester() }
@@ -133,7 +128,8 @@ fun AppShell(modifier: Modifier = Modifier) {
             mvVm.close()
         }
     }
-    // Video plays fullscreen ON the Now Playing tab; anywhere else it's an in-app PiP window.
+    // Video plays fullscreen ON the Now Playing tab; anywhere else its audio continues but the
+    // picture is not drawn (see the single persistent video surface below).
     val videoFullscreen = videoActive && isOnNowPlaying
 
     // Keep the nav-bar highlight in sync with the ACTUAL route — otherwise popping back from
@@ -191,13 +187,6 @@ fun AppShell(modifier: Modifier = Modifier) {
         if (keepScreenOn) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onDispose { activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
-    }
-
-    // In Picture-in-Picture the window is a tiny thumbnail — swap the whole UI for a
-    // minimal card: darkened album art + song title, no controls, no beat animation.
-    if (playerState.isInPip) {
-        PipView(playerState.currentSong)
-        return
     }
 
     val goToNowPlaying by navVm.goToNowPlaying.collectAsState()
@@ -506,17 +495,12 @@ fun AppShell(modifier: Modifier = Modifier) {
                         androidx.tv.material3.Surface(
                             onClick = {
                                 showExitDialog = false
-                                // A real exit must stop the audio: the player lives in the ViewModel,
-                                // which survives moveTaskToBack/finish, so without this the music kept
-                                // playing after "Exit".
-                                playerVm.stopPlayback()
-                                // Also stop a music video — it runs on its own player, so stopPlayback
-                                // (audio only) left its audio going after Exit.
-                                playerVm.clearVideoRequest(); mvVm.close()
-                                // If there's no activity to background (or the task is
-                                // already at the root), fall back to finish() so the
-                                // popup never just sits there doing nothing.
-                                if (activity?.moveTaskToBack(true) != true) activity?.finish()
+                                // Quit for real: saves the session, silences audio + video, then
+                                // finishes the task and ends the process. Backgrounding alone left
+                                // the process resident with its players and caches on a TV that
+                                // can't afford it (see MainActivity.exitApp).
+                                if (activity is com.applemusicktv.MainActivity) activity.exitApp()
+                                else { playerVm.stopForExit(); activity?.finish() }
                             },
                             shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
                             colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(
@@ -539,14 +523,13 @@ fun AppShell(modifier: Modifier = Modifier) {
 
         // Nav bar on top layer (drawn after content). Hidden entirely on the
         // fullscreen music-video route so it can't steal D-pad focus.
-        // Single persistent video surface. ONE PlayerView node that resizes between fullscreen
-        // (Now Playing tab) and an in-app PiP corner — never torn down while a video is active,
-        // so the codec never loses its surface (that was the "Can't play this video" crash).
+        // Single persistent video surface. ONE PlayerView node that renders fullscreen on the
+        // Now Playing tab — never torn down while a video is active, so the codec never loses
+        // its surface (that was the "Can't play this video" crash).
         // A secure (HDCP) SurfaceView can't be confined to a Compose corner — it draws across
         // whatever screen you're on. So the video surface renders ONLY fullscreen on Now Playing.
         // On other tabs the video KEEPS PLAYING (audio; the picture is simply not drawn) — it is
-        // not closed — and reappears when you return to Now Playing. On-screen PiP over the app
-        // isn't possible for protected video; the OS system PiP is the "picture while browsing".
+        // not closed — and reappears when you return to Now Playing.
         // Secure video surface — the "video in library" bleed, finally understood. A secure (HDCP)
         // SurfaceView is a whole-screen hardware overlay. The bleed was Compose DISPOSING that
         // SurfaceView when we left Now Playing (the old `&& isOnNowPlaying` gate): on Fire TV,
@@ -694,37 +677,4 @@ fun AppShell(modifier: Modifier = Modifier) {
 
     }
     } // CompositionLocalProvider(LocalCardMotion)
-}
-
-/** Minimal Picture-in-Picture card: the album art darkened, with the title + artist over it. */
-@Composable
-private fun PipView(song: Song?) {
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
-        if (song?.artworkUrl != null) {
-            AsyncImage(
-                model = song.artworkUrl(400),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            // Darken so the text stays legible at thumbnail size.
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
-        }
-        if (song != null) {
-            Column(
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-            ) {
-                Text(
-                    song.title, maxLines = 2,
-                    style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White,
-                        shadow = Shadow(Color.Black.copy(alpha = 0.9f), blurRadius = 8f)),
-                )
-                Text(
-                    song.artistName, maxLines = 1,
-                    style = TextStyle(fontSize = 12.sp, color = Color(0xCCFFFFFF),
-                        shadow = Shadow(Color.Black.copy(alpha = 0.9f), blurRadius = 8f)),
-                )
-            }
-        }
-    }
 }

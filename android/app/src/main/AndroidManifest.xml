@@ -28,12 +28,13 @@
             android:name="androidx.appcompat.app.AppCompatDelegate.application_locales_auto_storage"
             android:value="true" />
 
+        <!-- Leaving the app quits it (MainActivity.exitApp): no background playback, no system
+             PiP, nothing left resident to hold the decoders and caches on a low-RAM TV. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:banner="@drawable/banner"
             android:screenOrientation="landscape"
-            android:supportsPictureInPicture="true"
             android:resizeableActivity="true"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize"
             android:launchMode="singleTask">

@@ -189,7 +189,6 @@ class InAppWebServer @Inject constructor(
             method == "POST" && path == "/set-standalone"      -> { applyStandalone(parseField(body, "standalone")); redirect(out, "/") }
             method == "POST" && path == "/set-server-ip"       -> { applyServerIp(parseField(body, "serverip")); redirect(out, "/") }
                 method == "POST" && path == "/set-volume-leveling" -> { applyVolumeLeveling(parseField(body, "vol")); redirect(out, "/") }
-                method == "POST" && path == "/set-background-play" -> { applyBackgroundPlay(parseField(body, "bg")); redirect(out, "/") }
                 else -> send(out, 404, "text/plain", "Not found")
             }
             out.flush(); socket.close()
@@ -212,12 +211,6 @@ class InAppWebServer @Inject constructor(
         GainProcessor.enabled = on   // takes effect on the audio thread immediately
         playerPrefs().edit().putBoolean("volume_leveling", on).apply()
         addLog("OK", "Volume leveling ${if (on) "ON" else "OFF"}")
-    }
-
-    private fun applyBackgroundPlay(raw: String) {
-        val on = raw.trim() == "1"
-        playerPrefs().edit().putBoolean("background_play", on).apply()
-        addLog("OK", "Background play ${if (on) "ON" else "OFF"} — applies on next launch")
     }
 
     private fun applyServerIp(raw: String) {
@@ -339,7 +332,6 @@ class InAppWebServer @Inject constructor(
         val serverIp = serverPrefs.getPcServerIp()
         val pp = context.getSharedPreferences("player_state", Context.MODE_PRIVATE)
         val volLevelOn = pp.getBoolean("volume_leveling", false)
-        val bgPlayOn = pp.getBoolean("background_play", true)
         val currentCrossfade = crossfadePrefs.getDuration()
         val crossfadeSec = "%.1f".format(currentCrossfade / 1000f)
         val logRows = getLogs().reversed().take(80).joinToString("") { log ->
@@ -483,16 +475,6 @@ ${if(has)"<form method=POST action=/clear-token><button class='btn btn-s' type=s
 <button class="btn ${if (volLevelOn) "" else "btn-p"}" type=submit style=margin-top:8px>${if (volLevelOn) "Turn OFF" else "Turn ON"}</button>
 </form>
 <div style="font-size:10px;color:#555;margin-top:8px">Slow automatic gain so quiet masters come up and loud ones come down. Takes effect immediately. Watch it work in the App Logs (VOL lines).</div>
-</div>
-
-<div class=card>
-<h2>Background Play</h2>
-<div class=row><div class=label>Status</div><div class=sub2 style="color:${if (bgPlayOn) "#6bcb77" else "#aaa"}">${if (bgPlayOn) "ON — keeps playing in background" else "OFF — pauses when you leave"}</div></div>
-<form method=POST action=/set-background-play>
-<input type=hidden name=bg value="${if (bgPlayOn) "0" else "1"}">
-<button class="btn ${if (bgPlayOn) "" else "btn-p"}" type=submit style=margin-top:8px>${if (bgPlayOn) "Turn OFF" else "Turn ON"}</button>
-</form>
-<div style="font-size:10px;color:#555;margin-top:8px">Applies on the next app launch.</div>
 </div>
 
 <div class=card>

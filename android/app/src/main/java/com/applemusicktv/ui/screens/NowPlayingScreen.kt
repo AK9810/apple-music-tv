@@ -321,11 +321,8 @@ fun NowPlayingScreen(
                     // DIAGNOSTIC: motion artwork spins up a SECOND ExoPlayer/video
                     // decoder. Gated off to test whether it starves the audio decoder
                     // (standalone frame-drop chop) on the weak Fire TV.
-                    // In PiP, drop the motion decoder entirely: it's a whole second ExoPlayer/video
-                    // decoder, and holding it alive through the PiP transition is a memory spike that
-                    // the Fire TV's low-memory killer answers by killing us. onDispose releases it.
                     @Suppress("ConstantConditionIf")
-                    if (MOTION_ENABLED && state.motionUrl != null && !state.isInPip && !state.lowPowerMode) {
+                    if (MOTION_ENABLED && state.motionUrl != null && !state.lowPowerMode) {
                         MotionCover(url = state.motionUrl!!, modifier = Modifier.fillMaxSize())
                     }
                 }
