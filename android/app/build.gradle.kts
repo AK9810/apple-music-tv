@@ -29,8 +29,8 @@ android {
         applicationId = "com.applemusicktv"
         minSdk = 23
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.5"
+        versionCode = 7
+        versionName = "1.6"
         // Set your proxy server IP here
         // Proxy server URL. Set `proxyBaseUrl` in local.properties (gitignored)
         // to your machine's LAN IP, e.g. http://192.168.1.50:3000/. Falls back
@@ -62,6 +62,25 @@ android {
             isReturnDefaultValues = true
         }
     }
+
+    sourceSets.getByName("main") {
+        // :8080 serves the companion APK out of assets (GET /companion.apk).
+        assets.srcDir(layout.buildDirectory.dir("companion-apk"))
+    }
+}
+
+// Bundle the companion APK into the TV app's assets so a phone can scan-install it straight
+// from the TV (:8080), with no GitHub release round-trip. Copied from the :companion debug
+// output — a debug-signed APK installs fine on phones; wire a release-signed variant here
+// when the release CI starts producing one.
+val copyCompanionApk = tasks.register<Copy>("copyCompanionApk") {
+    from(File(rootDir, "companion/build/outputs/apk/debug/companion-debug.apk"))
+    into(layout.buildDirectory.dir("companion-apk"))
+    rename { "companion.apk" }
+    dependsOn(":companion:assembleDebug")
+}
+tasks.matching { it.name == "mergeDebugAssets" || it.name == "mergeReleaseAssets" }.configureEach {
+    dependsOn(copyCompanionApk)
 }
 
 dependencies {

@@ -203,7 +203,6 @@
     <string name="onboarding_sign_in_sub">Your Apple Music token is pasted from your phone — it\'s too long to type with a remote.</string>
     <string name="onboarding_scan_or_open">On your phone, scan this or open:</string>
     <string name="onboarding_web_starting">starting web server…</string>
-    <string name="onboarding_paste_token_hint">Paste your Music-User-Token there and this screen will continue on its own.</string>
     <string name="onboarding_token_preset">You already have a token saved. Paste a new one to replace it, or just press Continue.</string>
     <string name="onboarding_token_received">Token received.</string>
     <string name="onboarding_token_waiting">Waiting for a token…</string>
@@ -400,5 +399,13 @@
     <string name="spotlight_new_song">NEW SONG</string>
     <string name="spotlight_new_video">NEW VIDEO</string>
     <string name="spotlight_new_album">NEW ALBUM</string>
+
+    <string name="signin_method1_title">Method 1 · Phone browser + paste (original)</string>
+    <string name="signin_method1_body">Open the address above on your phone (or scan the upper code on the right) and paste your Music-User-Token on that page — this screen continues by itself.</string>
+    <string name="signin_method2_body">Install the AMTV Companion APK on an Android phone on the same Wi-Fi (scan the code on the right to download it), enter the address above there and sign in to Apple Music — the token is sent to the TV automatically.</string>
+    <string name="signin_method2_url_hint">Same Wi-Fi? The APK can also be downloaded directly in a phone browser:</string>
+    <string name="signin_method2_title">Method 2 · Companion app (new)</string>
+    <string name="signin_qr_page">Scan — open the paste page</string>
+    <string name="signin_qr_apk">Scan — download the companion app</string>
 
 </resources>

@@ -64,6 +64,17 @@ class OnboardingViewModel @Inject constructor(
     )
     val state: StateFlow<OnboardingState> = _state
 
+    init {
+        // The token arrives off-screen (pasted on the phone page, POSTed to this app), so mirror
+        // the prefs flow instead of waiting for the next poll tick to notice.
+        viewModelScope.launch {
+            mutPrefs.mut.collect { mut ->
+                val has = mut.isNotEmpty()
+                if (has != _state.value.hasMut) _state.update { it.copy(hasMut = has) }
+            }
+        }
+    }
+
     private var mutPollJob: Job? = null
 
     /** Five steps for a new user; a returning user only owes the language step. */

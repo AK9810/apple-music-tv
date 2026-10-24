@@ -16,6 +16,7 @@ yarn-error.log
 android/.gradle/
 android/build/
 android/app/build/
+android/companion/build/
 android/dist/
 android/captures/
 android/local.properties
@@ -26,9 +27,18 @@ android/local.properties
 *.jks
 .cxx/
 
+# ─── Local debug artifacts (agent session tooling, never commit) ──────
+.verify-*.png
+.cdp-*
+.companion-*
+.lan-proxy.py
+
 # ─── Python / server tooling (downloaded or created locally) ─────────
 .venv/
 server/.bento4/
+
+# ─── Agent tooling (local plans/state, never commit) ──────────────────
+.zcode/
 
 # ─── IDE / OS ─────────────────────────────────────────────────────────
 .idea/

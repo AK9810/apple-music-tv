@@ -12,6 +12,8 @@ import com.applemusicktv.data.repository.MusicRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import java.io.*
+import java.net.Inet4Address
+import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
@@ -146,10 +148,44 @@ class InAppWebServer @Inject constructor(
 
     fun getLogs(): List<String> = synchronized(logs) { logs.toList() }
 
-    fun serverUrl(): String {
+    fun serverUrl(): String = "http://${lanIp()}:$port"
+
+    /**
+     * The TV's LAN IP — the QR code and every "open this on your phone" hint are built from it.
+     *
+     * The old probe (WifiManager.connectionInfo) reports 0.0.0.0 on Ethernet-connected boxes and
+     * on emulators, so walk every interface instead: prefer wlan/eth addresses in home subnets,
+     * and keep the Wi-Fi probe only as a last resort.
+     */
+    private fun lanIp(): String {
+        val best = runCatching {
+            val enum = NetworkInterface.getNetworkInterfaces() ?: return@runCatching null
+            val scored = mutableListOf<Pair<Int, String>>()
+            for (nif in enum) {
+                if (!nif.isUp || nif.isLoopback) continue
+                for (addr in nif.inetAddresses) {
+                    val ip = (addr as? Inet4Address)?.hostAddress ?: continue
+                    if (addr.isLoopbackAddress || ip.startsWith("169.254.")) continue
+                    var score = when {
+                        nif.name.startsWith("wlan") -> 40
+                        nif.name.startsWith("eth") -> 30
+                        else -> 10
+                    }
+                    when {
+                        ip.startsWith("192.168.") -> score += 3
+                        ip.startsWith("10.") -> score += 2
+                        ip.startsWith("172.") -> score += 1
+                    }
+                    scored.add(score to ip)
+                }
+            }
+            scored.maxByOrNull { it.first }?.second
+        }.getOrNull()
+        if (best != null) return best
+        // Legacy probe — some TVs only expose their address here.
         val wm = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
         val ip = wm.connectionInfo.ipAddress
-        return "http://${ip and 0xff}.${ip shr 8 and 0xff}.${ip shr 16 and 0xff}.${ip shr 24 and 0xff}:$port"
+        return if (ip != 0) "${ip and 0xff}.${ip shr 8 and 0xff}.${ip shr 16 and 0xff}.${ip shr 24 and 0xff}" else "0.0.0.0"
     }
 
     private fun handle(socket: Socket) {
@@ -159,7 +195,9 @@ class InAppWebServer @Inject constructor(
             val reqLine = reader.readLine() ?: return
             val parts = reqLine.split(" ")
             val method = parts.getOrNull(0) ?: "GET"
-            val path   = parts.getOrNull(1) ?: "/"
+            val rawPath = parts.getOrNull(1) ?: "/"
+            val path = rawPath.substringBefore('?')
+            val query = rawPath.substringAfter('?', "")
             val hdrs = mutableMapOf<String, String>()
             var line = reader.readLine()
             while (!line.isNullOrBlank()) {
@@ -173,13 +211,18 @@ class InAppWebServer @Inject constructor(
                 val buf = CharArray(len); reader.read(buf, 0, len); body = String(buf)
             }
             when {
-                method == "GET"  && path == "/"            -> send(out, 200, "text/html", html())
+                method == "GET"  && path == "/"            -> send(out, 200, "text/html", html(inCompanion = (hdrs["user-agent"] ?: "").contains("AMTVCompanion")))
                 method == "GET"  && path == "/status"      -> send(out, 200, "application/json", status())
                 method == "GET"  && path == "/logs"        -> send(out, 200, "application/json", logsJson())
                 method == "GET"  && path == "/stream"      -> { handleSse(socket, out); return }
 
                 method == "GET"  && path == "/netlogs"     -> send(out, 200, "application/json", netLogsJson())
                 method == "GET"  && path == "/report"      -> send(out, 200, "text/plain", bugReport(), "Content-Disposition: attachment; filename=\"amtv-bugreport.txt\"\r\n")
+                method == "GET"  && path == "/companion.apk" -> sendCompanionApk(out)
+                // Top-level-navigation hand-off from the extraction script. The script runs inside
+                // Apple's HTTPS origin, where a fetch to a plain-HTTP LAN address is mixed-content
+                // blocked — only a full page navigation carries the token over (design: 2026-10-24).
+                method == "GET"  && path == "/set-token"   -> { applyToken(parseField(query, "mut")); send(out, 200, "text/html", tokenReceivedPage()) }
                 method == "POST" && path == "/clear-crash"        -> { com.applemusicktv.util.CrashReporter.clear(context); addLog("OK", "Crash log cleared"); redirect(out, "/") }
                 method == "POST" && path == "/set-token"          -> { applyToken(parseField(body, "mut")); redirect(out, "/") }
                 method == "POST" && path == "/clear-token"         -> { prefs.setMUT(""); addLog("WARN","Token cleared"); redirect(out, "/") }
@@ -249,6 +292,24 @@ class InAppWebServer @Inject constructor(
         }
     }
 
+    /**
+     * Landing page for the automatic hand-off (GET /set-token). Confirms what happened and
+     * tries to close itself — window.close() only works on script-opened tabs (the bookmark
+     * path opens one), otherwise the message stands until the user closes the tab.
+     */
+    private fun tokenReceivedPage(): String {
+        val ok = prefs.hasMUT()
+        return """<!DOCTYPE html><html><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Apple Music TV</title><style>
+body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;padding:40px;text-align:center}
+.t{font-size:18px;font-weight:600;margin-bottom:8px}.s{font-size:12px;color:#666;line-height:1.7}
+.g{color:#34c759}.r{color:#ff3b30}</style></head><body>
+<div class="t ${if (ok) "g" else "r"}">${if (ok) "Token received ✓" else "No token arrived"}</div>
+<div class=s>${if (ok) "You can close this page and go back to the TV — it picks the token up on its own."
+                   else "Go back and make sure you are signed in on music.apple.com, or paste the token manually on the previous page."}</div>
+<script>setTimeout(function(){window.close()},1500)</script>
+</body></html>"""
+    }
+
     private fun handleEvent(socket: Socket) {
         try {
             socket.soTimeout = 0
@@ -293,6 +354,21 @@ class InAppWebServer @Inject constructor(
 
     private fun redirect(out: BufferedOutputStream, to: String) = send(out, 303, "text/plain", "", "Location: $to\r\n")
 
+    /**
+     * The companion APK bundled in assets by the copyCompanionApk gradle task (see
+     * app/build.gradle.kts). Phones scan the QR on the onboarding sign-in step straight to
+     * here, so the install never depends on a GitHub release or a PC. send() is text-only,
+     * hence this byte variant.
+     */
+    private fun sendCompanionApk(out: BufferedOutputStream) {
+        val bytes = try { context.assets.open("companion.apk").use { it.readBytes() } }
+        catch (_: Exception) { send(out, 404, "text/plain", "Companion APK is not bundled in this build"); return }
+        val resp = "HTTP/1.1 200 OK\r\nContent-Type: application/vnd.android.package-archive\r\n" +
+            "Content-Length: ${bytes.size}\r\nConnection: close\r\n" +
+            "Content-Disposition: attachment; filename=\"AMTVCompanion.apk\"\r\n\r\n"
+        out.write(resp.toByteArray()); out.write(bytes)
+    }
+
     private fun parseField(body: String, field: String) =
         body.split("&").find { it.startsWith("$field=") }?.removePrefix("$field=")
             ?.replace("+", " ")?.let { URLDecoder.decode(it, "UTF-8") } ?: ""
@@ -323,7 +399,14 @@ class InAppWebServer @Inject constructor(
     private fun logsJson() = "[${getLogs().joinToString(",") { "\"${it.replace("\"","'")}\"" }}]"
     private fun netLogsJson() = "[${NetworkLog.getAll().joinToString(",") { "\"${it.replace("\"","'")}\"" }}]"
 
-    private fun html(): String {
+    /**
+     * The :8080 control page. [inCompanion] is true when the request comes from the companion
+     * app's WebView (UA marker) — its card is then the big "sign in" button that navigates the
+     * same WebView to music.apple.com; plain browsers instead get the bookmark script and a
+     * note about the companion app. The manual paste box below stays for everyone, as the
+     * fallback for when every automated path fails.
+     */
+    private fun html(inCompanion: Boolean): String {
         val has = prefs.hasMUT()
         val preview = if (has) prefs.getMUT().take(32) + "…" else ""
         val currentOffset = lyricsOffsetPrefs.getOffset()
@@ -416,6 +499,20 @@ function legacyCopy(text,done,b){
 <div class=row><div class="dot ${if(has)"dot-g" else "dot-r"}"></div><div><div class=label>Music-User-Token</div>${if(has)"<div class=sub2>$preview</div>" else "<div class=sub2 style=color:#555>Not set — paste below</div>"}</div></div>
 </div>
 </div>
+
+${if (inCompanion) """
+<div class=card>
+<h2>Sign in to Apple Music</h2>
+<div style="font-size:12px;color:#999;line-height:1.7;margin-bottom:10px">Sign in with your Apple ID (password and 2FA are painless here). Once you're signed in, the app sends the token to the TV on its own and reloads this page — then just go back to the TV.</div>
+<a class="btn btn-p" style=text-decoration:none href="https://music.apple.com/">Open music.apple.com &amp; sign in</a>
+</div>
+""" else """
+<div class=card>
+<h2>Two ways to sign in</h2>
+<div style="font-size:12px;color:#999;line-height:1.9"><strong style=color:#ccc>Method 1 · paste the token (original)</strong> — copy your Music-User-Token (guide in "How to get your token" below) and save it with the <strong style=color:#ccc>Set Token</strong> card on this page. Works in any browser.</div>
+<div style="font-size:12px;color:#999;line-height:1.9;margin-top:8px"><strong style=color:#6bcb77>Method 2 · companion app (automatic)</strong> — install the <strong style=color:#ccc>AMTV Companion</strong> APK on an Android phone on the same Wi-Fi, open it, type this TV's address (<span style="font-family:monospace;color:#aaa">${serverUrl()}</span>), and sign in to Apple Music there. The token lands here on its own. <a href=/companion.apk style=color:#fa233b>Download the companion APK here</a>.</div>
+</div>
+"""}
 
 <div class=card>
 <h2>Set Token</h2>
@@ -519,3 +616,4 @@ ${if(has)"<form method=POST action=/clear-token><button class='btn btn-s' type=s
 </body></html>"""
     }
 }
+

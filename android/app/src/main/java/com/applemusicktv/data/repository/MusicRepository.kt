@@ -299,7 +299,9 @@ class MusicRepository @Inject constructor(
     suspend fun getAuthStatus() = api.getAuthStatus()
     suspend fun setMUT(token: String) {
         mutPrefs.setMUT(token)
-        api.setMUT(mapOf("mut" to token))
+        // The device copy is what every request reads; the proxy copy only matters when one
+        // is configured. A sleeping PC must not turn a successful sign-in into an error.
+        runCatching { api.setMUT(mapOf("mut" to token)) }
     }
     suspend fun syncMUTToServer(token: String) = api.setMUT(mapOf("mut" to token))
     suspend fun clearMUT() {

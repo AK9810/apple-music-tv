@@ -11,7 +11,8 @@
 ## Running safely
 
 - The optional proxy binds to `0.0.0.0` — run it **only on a trusted LAN**, never exposed to the internet.
-- The phone setup page (port 8080) and the proxy have no authentication; anyone on your network who reaches them can read status/logs and set the token. Keep them on a private network.
+- The phone setup page (port 8080) and the proxy have no authentication; anyone on your network who reaches them can read status/logs and set the token. Keep them on a private network. This includes the **automatic token hand-off**: the companion app and the browser bookmark deliver a token to `GET /set-token` with no pairing step — fine on a home router, but don't use these on a shared network.
+- The companion app signs in to Apple inside **its own WebView**. That session (cookies, including `media-user-token`) lives in the app's private storage on the phone; uninstalling the companion app clears it. The token itself is then stored on the TV exactly like a pasted one.
 - Streams are decrypted **locally for playback only**. Don't use this to redistribute content.
 
 ## Reporting a vulnerability

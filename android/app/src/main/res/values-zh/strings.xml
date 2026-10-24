@@ -199,7 +199,6 @@
     <string name="onboarding_sign_in_sub">你的 Apple Music Token 需要在手机上粘贴 — 太长，无法用遥控器输入。</string>
     <string name="onboarding_scan_or_open">在手机上扫描此二维码，或打开：</string>
     <string name="onboarding_web_starting">正在启动网页服务器…</string>
-    <string name="onboarding_paste_token_hint">在手机上粘贴你的 Music-User-Token，此页面会自动继续。</string>
     <string name="onboarding_token_preset">你已经保存了 Token。可粘贴新的以替换，或直接按“继续”。</string>
     <string name="onboarding_token_received">已收到 Token。</string>
     <string name="onboarding_token_waiting">等待 Token…</string>
@@ -396,5 +395,13 @@
     <string name="spotlight_new_song">新歌</string>
     <string name="spotlight_new_video">新视频</string>
     <string name="spotlight_new_album">新专辑</string>
+
+    <string name="signin_method1_title">方式一 · 手机浏览器粘贴（原有）</string>
+    <string name="signin_method1_body">用手机扫描右侧上方二维码或打开上方地址，在页面上粘贴你的 Music-User-Token，此页面会自动继续。</string>
+    <string name="signin_method2_body">在同一 Wi-Fi 的安卓手机上安装 AMTV Companion（扫右侧二维码即可下载），在其中输入上方地址并登录 Apple Music，Token 会自动回传到电视。</string>
+    <string name="signin_method2_url_hint">同一 Wi-Fi 下，也可以在手机浏览器里直接打开下载：</string>
+    <string name="signin_method2_title">方式二 · 伴侣 App 自动回传（新加）</string>
+    <string name="signin_qr_page">扫码打开粘贴页</string>
+    <string name="signin_qr_apk">扫码下载伴侣 App</string>
 
 </resources>

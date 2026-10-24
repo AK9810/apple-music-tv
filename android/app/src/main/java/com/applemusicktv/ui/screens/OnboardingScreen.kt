@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
@@ -21,6 +22,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.*
@@ -86,7 +88,7 @@ fun OnboardingScreen(vm: OnboardingViewModel, onDone: () -> Unit, modifier: Modi
         modifier
             .fillMaxSize()
             .background(Color(0xFF050505))
-            .padding(horizontal = 96.dp, vertical = 56.dp),
+            .padding(horizontal = 96.dp, vertical = 44.dp),
     ) {
         Column(Modifier.fillMaxSize()) {
             ProgressDots(current = s.step, total = vm.totalSteps)
@@ -96,7 +98,12 @@ fun OnboardingScreen(vm: OnboardingViewModel, onDone: () -> Unit, modifier: Modi
             var prevStep by remember { mutableStateOf(s.step) }
             val forward = s.step >= prevStep
             LaunchedEffect(s.step) { prevStep = s.step }
+            // weight(1f) fills the space above the bottom button row — it also pushes
+            // that row on-screen when a step's content is taller than it (step 2 once
+            // overflowed and half-hid Back/Continue), while clipToBounds stops the
+            // overflow from drawing over the buttons.
             androidx.compose.animation.AnimatedContent(
+                modifier = Modifier.weight(1f).clipToBounds(),
                 targetState = s.step,
                 transitionSpec = {
                     val dir = if (forward) 1 else -1
@@ -120,8 +127,6 @@ fun OnboardingScreen(vm: OnboardingViewModel, onDone: () -> Unit, modifier: Modi
                     }
                 }
             }
-
-            Spacer(Modifier.weight(1f))
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (s.step > 1) OnbButton(stringResource(R.string.common_back), onClick = vm::back)
@@ -182,24 +187,42 @@ private fun StepLanguage(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmo
 }
 
 @Composable
-private fun StepAccount(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmodel.OnboardingState) {
+private fun StepAccount(
+    vm: OnboardingViewModel,
+    s: com.applemusicktv.ui.viewmodel.OnboardingState,
+) {
     StepHeader(stringResource(R.string.onboarding_sign_in_title), stringResource(R.string.onboarding_sign_in_sub))
 
     Row(Modifier.padding(top = 22.dp), verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.onboarding_scan_or_open), fontSize = 14.sp, color = Color(0xFF999999))
-            Spacer(Modifier.height(8.dp))
+            // The address both methods share: the phone browser opens it, the companion
+            // app asks for it verbatim.
             Text(
                 s.phoneUrl.ifEmpty { stringResource(R.string.onboarding_web_starting) },
                 fontSize = 28.sp, fontWeight = FontWeight.Bold,
                 color = Color.White, fontFamily = FontFamily.Monospace,
             )
-            Spacer(Modifier.height(18.dp))
-            Text(
-                stringResource(R.string.onboarding_paste_token_hint),
-                fontSize = 14.sp, color = Color(0xFF888888),
-            )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(20.dp))
+            // Two ways to get the token across, original first: browser + paste, then the
+            // companion app that signs in on the phone and delivers by itself.
+            Text(stringResource(R.string.signin_method1_title), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.signin_method1_body), fontSize = 13.sp, color = Color(0xFF999999))
+            Spacer(Modifier.height(14.dp))
+            Text(stringResource(R.string.signin_method2_title), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6BCB77))
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.signin_method2_body), fontSize = 13.sp, color = Color(0xFF999999))
+            // No scanner handy? The intranet address, spelled out — same URL the QR encodes.
+            if (s.phoneUrl.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.signin_method2_url_hint), fontSize = 13.sp, color = Color(0xFF999999))
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    s.phoneUrl + "/companion.apk",
+                    fontSize = 13.sp, color = Color(0xFF6BCB77), fontFamily = FontFamily.Monospace,
+                )
+            }
+            Spacer(Modifier.height(20.dp))
             Text(
                 when {
                     s.hasMut && s.tokenPresetOnEntry -> stringResource(R.string.onboarding_token_preset)
@@ -213,31 +236,49 @@ private fun StepAccount(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmod
             Text(stringResource(R.string.onboarding_no_token_note), fontSize = 12.sp, color = Color(0xFF555555))
         }
 
-        // QR of the same URL. Drawn on a white card with a quiet zone — a code that
-        // bleeds into a dark background won't scan.
-        val matrix = remember(s.phoneUrl) { s.phoneUrl.takeIf { it.isNotEmpty() }?.let { QrCode.encode(it) } }
-        if (matrix != null) {
-            Box(
-                // A full 4-module quiet zone, as the spec requires — the first version
-                // left only ~2 and that is the usual reason a phone won't lock on.
-                Modifier.padding(start = 40.dp).size(250.dp)
-                    .background(Color.White, RoundedCornerShape(10.dp))
-                    .padding(30.dp),
+        // Two QRs, one per method: the :8080 page to paste on, and the companion APK that
+        // the TV itself serves (GET /companion.apk) — the install never leaves the LAN.
+        if (s.phoneUrl.isNotEmpty()) {
+            Column(
+                modifier = Modifier.padding(start = 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Canvas(Modifier.fillMaxSize()) {
-                    val n = matrix.size
-                    val cell = size.minDimension / n
-                    for (r in 0 until n) for (c in 0 until n) {
-                        if (!matrix[r][c]) continue
-                        drawRect(
-                            color = Color.Black,
-                            topLeft = androidx.compose.ui.geometry.Offset(c * cell, r * cell),
-                            // Half-pixel overdraw: exact cell widths leave hairline gaps
-                            // after rounding, which some scanners read as light modules.
-                            size = androidx.compose.ui.geometry.Size(cell + 0.5f, cell + 0.5f),
-                        )
-                    }
-                }
+                OnbQr(s.phoneUrl, 150.dp)
+                Text(stringResource(R.string.signin_qr_page), fontSize = 11.sp, color = Color(0xFF888888), modifier = Modifier.padding(top = 6.dp))
+                Spacer(Modifier.height(12.dp))
+                OnbQr(s.phoneUrl + "/companion.apk", 150.dp)
+                Text(stringResource(R.string.signin_qr_apk), fontSize = 11.sp, color = Color(0xFF888888), modifier = Modifier.padding(top = 6.dp))
+            }
+        }
+    }
+}
+
+/**
+ * QR of [url] on a white card. Drawn on white with a proportional quiet zone — a code that
+ * bleeds into a dark background, or loses its quiet zone, won't scan.
+ */
+@Composable
+private fun OnbQr(url: String, side: Dp) {
+    val matrix = remember(url) { QrCode.encode(url) } ?: return
+    Box(
+        Modifier.size(side)
+            .background(Color.White, RoundedCornerShape(10.dp))
+            // A full 4-module quiet zone, as the spec requires — the first version
+            // left only ~2 and that is the usual reason a phone won't lock on.
+            .padding((side.value * 0.12f).dp),
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val n = matrix.size
+            val cell = size.minDimension / n
+            for (r in 0 until n) for (c in 0 until n) {
+                if (!matrix[r][c]) continue
+                drawRect(
+                    color = Color.Black,
+                    topLeft = androidx.compose.ui.geometry.Offset(c * cell, r * cell),
+                    // Half-pixel overdraw: exact cell widths leave hairline gaps
+                    // after rounding, which some scanners read as light modules.
+                    size = androidx.compose.ui.geometry.Size(cell + 0.5f, cell + 0.5f),
+                )
             }
         }
     }
