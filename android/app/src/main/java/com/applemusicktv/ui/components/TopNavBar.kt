@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.*
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.map
 import kotlin.math.pow
 import com.applemusicktv.ui.navigation.TopNavTab
 import com.applemusicktv.ui.components.Glyph
@@ -34,12 +36,22 @@ import com.applemusicktv.ui.components.Icon
  *  between beats; the live [BeatAnalyzer] energy punches all three up on each beat (Apple-style). */
 @Composable
 private fun EqBars(beatAnalyzer: com.applemusicktv.media.BeatAnalyzer?) {
-    val energy by (beatAnalyzer?.energy?.collectAsState() ?: remember { mutableStateOf(0f) })
+    // No `by`: the energy is only ever read inside the coroutine / draw phase below, never in
+    // composition. A `by` read here would retarget the pulse on every BeatAnalyzer emission and
+    // recompose the whole top bar while playing.
+    val energyState = beatAnalyzer?.energy?.collectAsState() ?: remember { mutableStateOf(0f) }
     // Sensitivity: bass-onset energy peaks low, so lift small values (gamma < 1) and add gain
     // before clamping — a quiet beat should still visibly punch the bars.
-    val sens = (energy.coerceIn(0f, 1f).pow(0.55f) * 1.6f).coerceIn(0f, 1f)
-    // Snappy attack, graceful fall. Kept as State (no `by`): the value is read in the draw lambda.
-    val punch = animateFloatAsState(sens, tween(55, easing = LinearEasing), label = "eqPunch")
+    fun sanitise(energy: Float) = (energy.coerceIn(0f, 1f).pow(0.55f) * 1.6f).coerceIn(0f, 1f)
+    // Snappy attack, graceful fall. An Animatable driven from a coroutine keeps the whole pulse
+    // pipeline out of composition: new targets only restart the coroutine, and the value is read
+    // inside the Canvas draw lambda.
+    val punch = remember { Animatable(0f) }
+    LaunchedEffect(energyState) {
+        snapshotFlow { energyState.value }
+            .map { sanitise(it) }
+            .collectLatest { target -> punch.animateTo(target, tween(55, easing = LinearEasing)) }
+    }
     val inf = rememberInfiniteTransition(label = "eq")
     val w1 = inf.animateFloat(0.30f, 0.70f, infiniteRepeatable(tween(430, easing = LinearEasing), RepeatMode.Reverse), label = "w1")
     val w2 = inf.animateFloat(0.65f, 0.28f, infiniteRepeatable(tween(310, easing = LinearEasing), RepeatMode.Reverse), label = "w2")
