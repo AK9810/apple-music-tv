@@ -301,8 +301,8 @@ fun NowPlayingScreen(
                         .clip(RoundedCornerShape(if (state.artworkRounded) 18.dp else 0.dp))
                         .background(Color(0xFF1A1A2E)),
                 ) {
-                    // Cross-fade the cover instead of hard-swapping it on song change. Live radio
-                    // paused → show the station's own cover (there's no "current track" while paused).
+                    // Live radio paused → show the station's own cover (there's no "current track"
+                    // while paused).
                     val coverUrl = if (state.isLiveRadio && !state.isPlaying && state.radioStationArt != null)
                         state.radioStationArt else song.artworkUrl(600)
                     if (coverUrl != null) {
