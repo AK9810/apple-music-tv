@@ -41,11 +41,11 @@ fun AlbumCard(album: Album, size: Int = 130, onClick: () -> Unit, onLongClick: (
         onLongClick = onLongClick,
         modifier = modifier.width(size.dp)
             .onFocusChanged { focused = it.isFocused || it.hasFocus },
-        // Apple-style: soft scale + a gentle white halo on focus — no hard red border.
+        // Focus = soft scale + a 1.5dp white border, deliberately NO glow: tv-material's glow is a
+        // real Paint.setShadowLayer blur redrawn every frame while focused, the top source of focus /
+        // list-scroll jank on the baseline box (ADR-0001 §3). Omitting `glow` leaves the library
+        // default (Glow.None), which draws no shadow layer at all.
         scale = CardDefaults.scale(focusedScale = 1.08f, pressedScale = 0.96f),
-        glow  = CardDefaults.glow(
-            focusedGlow = Glow(Color.White.copy(alpha = 0.22f), 18.dp)
-        ),
         border = CardDefaults.border(
             focusedBorder = Border(
                 border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.55f)),

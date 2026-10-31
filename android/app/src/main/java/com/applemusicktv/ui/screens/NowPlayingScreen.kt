@@ -1947,8 +1947,10 @@ private fun TransportButton(
             containerColor        = Color.Transparent,
             focusedContainerColor = Color(0x22FFFFFF),
         ),
+        // No `glow` on transport buttons: scale + focused container tint only. tv-material's glow
+        // draws a real setShadowLayer blur while focused (ADR-0001 §3), and these buttons sit in the
+        // row that's re-laid out on every playback state change.
         scale  = ClickableSurfaceDefaults.scale(focusedScale = 1.10f),
-        glow   = ClickableSurfaceDefaults.glow(focusedGlow = Glow(Color.White.copy(alpha = 0.3f), 10.dp)),
         border = ClickableSurfaceDefaults.border(border = noBorder, focusedBorder = noBorder),
         modifier = modifier.size(btnSize),
     ) {

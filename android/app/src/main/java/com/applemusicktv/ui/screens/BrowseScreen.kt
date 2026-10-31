@@ -259,9 +259,8 @@ private fun SeeAllCard(size: Int, onClick: () -> Unit) {
         androidx.tv.material3.Card(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+            // No `glow`: a per-frame setShadowLayer blur (ADR-0001 §3). Border + scale only.
             scale = androidx.tv.material3.CardDefaults.scale(focusedScale = 1.08f),
-            glow = androidx.tv.material3.CardDefaults.glow(
-                focusedGlow = androidx.tv.material3.Glow(Color.White.copy(alpha = 0.22f), 18.dp)),
             border = androidx.tv.material3.CardDefaults.border(
                 focusedBorder = androidx.tv.material3.Border(
                     border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.55f)),
