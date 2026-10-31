@@ -69,6 +69,21 @@ android {
     }
 }
 
+// Compose compiler stability reports + metrics, written into the module build directory (gitignored,
+// never bundled into the APK). Build-only diagnostics: no codegen, no runtime/UI change.
+//   reports -> app/build/compose_reports/app_{debug,release}-composables.txt (per-composable skippability)
+//              app/build/compose_reports/app_{debug,release}-classes.txt     (which classes/params are stable)
+//   metrics -> app/build/compose_metrics/app_{debug,release}-module.json    (unstable-arg and skip counts)
+// With strong skipping (on by default) an unstable argument is compared by identity, not equals: the
+// composable still skips when the same instance comes back, but re-runs whenever a fresh List/Section
+// instance arrives. Those params are the ones worth fixing — the report lists them per function.
+// The report dirs are not Gradle task outputs, so an up-to-date compile writes nothing: after deleting
+// them (or to refresh the baseline) run `./gradlew :app:compileDebugKotlin --rerun`.
+composeCompiler {
+    reportsDestination = layout.buildDirectory.dir("compose_reports")
+    metricsDestination = layout.buildDirectory.dir("compose_metrics")
+}
+
 // Bundle the companion APK into the TV app's assets so a phone can scan-install it straight
 // from the TV (:8080), with no GitHub release round-trip. Copied from the :companion debug
 // output — a debug-signed APK installs fine on phones; wire a release-signed variant here
