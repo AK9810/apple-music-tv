@@ -2,6 +2,7 @@ package com.applemusicktv.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,7 +14,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -33,18 +38,38 @@ private fun EqBars(beatAnalyzer: com.applemusicktv.media.BeatAnalyzer?) {
     // Sensitivity: bass-onset energy peaks low, so lift small values (gamma < 1) and add gain
     // before clamping — a quiet beat should still visibly punch the bars.
     val sens = (energy.coerceIn(0f, 1f).pow(0.55f) * 1.6f).coerceIn(0f, 1f)
-    // Snappy attack, graceful fall.
-    val punch by animateFloatAsState(sens, tween(55, easing = LinearEasing), label = "eqPunch")
+    // Snappy attack, graceful fall. Kept as State (no `by`): the value is read in the draw lambda.
+    val punch = animateFloatAsState(sens, tween(55, easing = LinearEasing), label = "eqPunch")
     val inf = rememberInfiniteTransition(label = "eq")
-    val w1 by inf.animateFloat(0.30f, 0.70f, infiniteRepeatable(tween(430, easing = LinearEasing), RepeatMode.Reverse), label = "w1")
-    val w2 by inf.animateFloat(0.65f, 0.28f, infiniteRepeatable(tween(310, easing = LinearEasing), RepeatMode.Reverse), label = "w2")
-    val w3 by inf.animateFloat(0.38f, 0.72f, infiniteRepeatable(tween(520, easing = LinearEasing), RepeatMode.Reverse), label = "w3")
-    Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.height(12.dp)) {
-        listOf(w1, w2, w3).forEach { wob ->
-            val frac = (wob * 0.28f + punch * 0.9f).coerceIn(0.18f, 1f)
-            Box(Modifier.width(2.dp).fillMaxHeight(frac).clip(RoundedCornerShape(1.dp)).background(Color(0xFFFA233B)))
-        }
+    val w1 = inf.animateFloat(0.30f, 0.70f, infiniteRepeatable(tween(430, easing = LinearEasing), RepeatMode.Reverse), label = "w1")
+    val w2 = inf.animateFloat(0.65f, 0.28f, infiniteRepeatable(tween(310, easing = LinearEasing), RepeatMode.Reverse), label = "w2")
+    val w3 = inf.animateFloat(0.38f, 0.72f, infiniteRepeatable(tween(520, easing = LinearEasing), RepeatMode.Reverse), label = "w3")
+    // PERF: the wobble and punch values are read INSIDE the draw lambda, never in the composable body.
+    // A `by` read up here made the whole top bar recompose every frame while the bars were visible;
+    // painted from the draw phase, the animation only invalidates paint.
+    Canvas(Modifier.width(10.dp).height(12.dp)) {
+        val p = punch.value
+        val barWidth = 2.dp.toPx()
+        val stride = 4.dp.toPx() // 2dp bar + 2dp gap
+        val corner = CornerRadius(1.dp.toPx())
+        drawEqBar(0f, w1.value, p, barWidth, corner)
+        drawEqBar(stride, w2.value, p, barWidth, corner)
+        drawEqBar(stride * 2f, w3.value, p, barWidth, corner)
     }
+}
+
+/** One bar of [EqBars]: [wobble] is the bar's own idle level, [punch] the shared beat kick. The
+ *  fraction of the 12dp container is the same curve the old `fillMaxHeight(frac)` box used, and the
+ *  bar is vertically centred like the old `Alignment.CenterVertically` row. */
+private fun DrawScope.drawEqBar(x: Float, wobble: Float, punch: Float, barWidth: Float, corner: CornerRadius) {
+    val frac = (wobble * 0.28f + punch * 0.9f).coerceIn(0.18f, 1f)
+    val barHeight = size.height * frac
+    drawRoundRect(
+        color        = Color(0xFFFA233B),
+        topLeft      = Offset(x, (size.height - barHeight) / 2f),
+        size         = Size(barWidth, barHeight),
+        cornerRadius = corner,
+    )
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
