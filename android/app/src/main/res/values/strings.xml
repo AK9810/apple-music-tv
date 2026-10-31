@@ -52,6 +52,7 @@
     <string name="settings_section_now_playing">Now Playing</string>
     <string name="settings_section_remote">Remote</string>
     <string name="settings_section_av_sync">A/V Sync</string>
+    <string name="settings_section_performance">Performance</string>
     <string name="settings_section_account">Account</string>
     <string name="settings_section_connection">Connection</string>
     <string name="settings_section_logs">Logs</string>
@@ -113,6 +114,13 @@
     <string name="settings_ambient_screensaver">Ambient screensaver</string>
     <string name="settings_ambient_screensaver_on">Keep the moving background while dimmed</string>
     <string name="settings_ambient_screensaver_off">Fade to plain black while dimmed</string>
+
+    <!-- Settings: performance diagnostics (Dev menu) -->
+    <string name="settings_frame_stats">Frame time overlay</string>
+    <string name="settings_frame_stats_on">P50/P90 frame duration + dropped frames, last 5 s</string>
+    <string name="settings_frame_stats_off">Off — no frame metrics collected</string>
+    <string name="frame_stats_waiting">collecting…</string>
+    <string name="frame_stats_dropped">dropped</string>
 
     <!-- Settings: remote -->
     <string name="settings_remote_type">Remote type</string>
