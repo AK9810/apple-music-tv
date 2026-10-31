@@ -12,8 +12,8 @@
 |---|------|--------------|----------|------|
 | 1.1 | **Dev 菜单帧时间悬浮窗**（首个提交）。`Window.addOnFrameMetricsAvailableListener`（API 24+）统计每帧总耗时，显示近 5 秒 P50/P90 与掉帧计数；Dev 菜单开关，默认关闭。 | `ui/screens/DevMenuScreen.kt`、`ui/viewmodel/DevMenuViewModel.kt`、新增 `util/FrameStats.kt` | 让之后每个改动的效果可在真机上肉眼+数字复核 | 极低，纯诊断代码 |
 | 1.2 | **去掉卡片焦点 glow**，保留 1.5dp 描边 + 1.08 缩放。涉及 `AlbumCard`（18dp）、`SpotlightHeroCard`/`SpotlightCard`（22dp）、`NowPlayingBar` 传输按钮（10dp）、歌词行（无 glow，确认即可）。 | `ui/components/AlbumCard.kt:45-55`、`SpotlightCards.kt:59-61,118-120`、`NowPlayingBar.kt:97-99` | A/F：每次聚焦少一次 `setShadowLayer` 模糊 | 低；视觉从"柔光"变"清晰描边"（已批准） |
-| 1.3 | **NavHost 转场 700ms → 200ms** 淡入 + 8dp 位移（进入/退出/返回三组）。 | `ui/AppShell.kt:263` | C：每次导航从 ~42 帧全屏合成降到 ~12 帧 | 低；转场变快，已批准 |
-| 1.4 | **封面硬切**：删除外层 Compose `Crossfade` 与内层 Coil `crossfade(1000)`，过渡交给背景渐变的调色动画。 | `NowPlayingScreen.kt:307-320` | D：切歌时少两层全屏/大图淡入合成 | 低；视觉更接近 Apple Music 的"直接换图" |
+| 1.3 | **NavHost 转场 700ms → 200ms** 淡入 + 8dp 位移（进入/退出/返回三组）。 | `ui/AppShell.kt` 的 `NavHost` | C：每次导航从 ~42 帧全屏合成降到 ~12 帧 | 低；转场变快，已批准 |
+| 1.4 | **封面硬切**：删除外层 Compose `Crossfade` 与内层 Coil `crossfade(1000)`，过渡交给背景渐变的调色动画。 | `NowPlayingScreen.kt` 的封面块 | D：切歌时少两层全屏/大图淡入合成 | 低；视觉更接近 Apple Music 的"直接换图" |
 | 1.5 | **Now Playing 模式切换 Crossfade 450ms → 250ms**（播放器/全屏歌词/屏保）。 | `NowPlayingScreen.kt:228` | D | 低 |
 | 1.6 | **EqBars 改为 drawBehind 延迟读取**：3 个 `rememberInfiniteTransition` 值与脉冲值不再 `by` 读在 composable 作用域，移入绘制 lambda（可复用 Skeleton 的写法）。 | `ui/components/TopNavBar.kt:31-45` | 全局：播放中顶栏不再每帧重组 | 低 |
 | 1.7 | **启用 Compose 编译器稳定性报告**（`reportsDestination` + `metricsDestination`），CI/本地构建时产出，人工检查不稳定参数。 | `android/app/build.gradle.kts` | 本地可量化的验收依据；发现整行重组的隐藏项 | 低，仅构建配置 |

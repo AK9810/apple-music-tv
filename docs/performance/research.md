@@ -10,8 +10,8 @@
 | # | 位置 | 事实 | 影响场景 |
 |---|------|------|----------|
 | 1 | `ui/components/AlbumCard.kt:45-55`、`SpotlightCards.kt:59-61` | tv-material 1.0.0 的 `CardDefaults.glow` 经反编译确认用 `Paint.setShadowLayer(blurRadiusPx, ...)` 绘制真模糊阴影（18–22dp）。聚焦卡片每帧都在做模糊。 | A 焦点移动 / F 列表滚动 |
-| 2 | `ui/AppShell.kt:263` | `NavHost` 未配置 `enterTransition/exitTransition`，采用 navigation-compose 2.8.1 默认 **700ms 全屏淡入淡出**。每次导航两块全屏内容同时合成约 42 帧。 | C 页面转场 |
-| 3 | `ui/screens/NowPlayingScreen.kt:307-320` | 封面 `Crossfade(tween(1000))` 外层 + Coil `crossfade(1000)` 内层 = 双层淡入；同屏还有 450ms 的 `Crossfade`（播放器/全屏歌词/屏保）和 60fps `DynamicBackground`。 | D 打开 Now Playing / 切歌 |
+| 2 | `ui/AppShell.kt` 的 `NavHost` | `NavHost` 未配置 `enterTransition/exitTransition`，采用 navigation-compose 2.8.1 默认 **700ms 全屏淡入淡出**。每次导航两块全屏内容同时合成约 42 帧。 | C 页面转场 |
+| 3 | `ui/screens/NowPlayingScreen.kt` 的封面块 | 封面 `Crossfade(tween(1000))` 外层 + Coil `crossfade(1000)` 内层 = 双层淡入；同屏还有 450ms 的 `Crossfade`（播放器/全屏歌词/屏保）和 60fps `DynamicBackground`。 | D 打开 Now Playing / 切歌 |
 | 4 | `ui/components/TopNavBar.kt:31-40` | `EqBars` 用 `by` 在 composable 作用域读取 3 个 `rememberInfiniteTransition` 值和 1 个脉冲值 → 播放中整条顶栏每帧重组。违反 CLAUDE.md 自己的"不要 `by` 读每帧 State"戒律。 | 全局（顶栏常驻） |
 | 5 | `ui/screens/NowPlayingScreen.kt:1099+` | `DynamicBackground` 已高度优化（draw 阶段延迟读取、零分配 scratch 数组、brush 缓存、3 blob、Screen 混合），但仍是 60fps 全屏绘制 3 个混合 blob + 暗角。 | D 氛围动效 |
 | 6 | `AppleMusicApp.kt:31-43` | Coil 已配置 RGB_565、`crossfade(false)`、`respectCacheHeaders(false)`、40MB 内存缓存——无需改。 | — |

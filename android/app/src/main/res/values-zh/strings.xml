@@ -115,8 +115,8 @@
     <string name="settings_frame_stats">帧时间悬浮窗</string>
     <string name="settings_frame_stats_on">显示最近 5 秒的 P50 / P90 帧耗时与掉帧数</string>
     <string name="settings_frame_stats_off">关闭 — 不采集任何帧数据</string>
+    <string name="frame_stats_readout">P50 %1$s · P90 %2$s · 掉帧 %3$d</string>
     <string name="frame_stats_waiting">采样中…</string>
-    <string name="frame_stats_dropped">掉帧</string>
 
     <!-- Settings: remote -->
     <string name="settings_remote_type">遥控器类型</string>

@@ -97,8 +97,14 @@ private fun FrameTimeOverlayApi24(modifier: Modifier) {
     val text = if (stats.sampleCount == 0) {
         stringResource(R.string.frame_stats_waiting)
     } else {
-        "P50 ${formatMs(stats.p50Ms)} · P90 ${formatMs(stats.p90Ms)} · " +
-            "${stringResource(R.string.frame_stats_dropped)} ${stats.droppedFrames}"
+        // One positional-format resource so the whole readout translates as a unit (the `ms`
+        // inside formatMs is a unit, not prose, so it stays out of the resource).
+        stringResource(
+            R.string.frame_stats_readout,
+            formatMs(stats.p50Ms),
+            formatMs(stats.p90Ms),
+            stats.droppedFrames,
+        )
     }
 
     Box(
