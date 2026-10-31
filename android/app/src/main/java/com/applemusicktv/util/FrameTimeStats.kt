@@ -1,5 +1,6 @@
 package com.applemusicktv.util
 
+import com.applemusicktv.ui.theme.MotionBudget
 import kotlin.math.ceil
 
 /**
@@ -28,7 +29,13 @@ data class FrameStats(
  * happened, never an interpolated duration the device never drew.
  */
 object FrameTimeStats {
-    /** One frame at 60 Hz. A frame longer than this is counted as dropped. */
+    /**
+     * One frame at 60 Hz. A frame longer than this is counted as dropped.
+     *
+     * This is the display's frame budget used to classify samples, not a motion-policy value —
+     * animation durations and frame-rate ceilings live in
+     * [com.applemusicktv.ui.theme.MotionBudget].
+     */
     const val FRAME_BUDGET_NS = 16_600_000L
 
     private const val NANOS_PER_MS = 1_000_000.0
@@ -70,8 +77,8 @@ object FrameTimeStats {
  * recomposition per frame to the very frames it is measuring.
  */
 object FrameRedrawThrottle {
-    /** 1/30 s in nanoseconds. */
-    const val MIN_REDRAW_INTERVAL_NS = 33_333_333L
+    /** 1/30 s in nanoseconds, derived from the ambient motion budget (one 30fps source). */
+    const val MIN_REDRAW_INTERVAL_NS = MotionBudget.ambientFrameIntervalNs
 
     /**
      * @param lastRedrawNanos timestamp of the last text update; 0 means "never".

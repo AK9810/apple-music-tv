@@ -37,5 +37,13 @@ object MotionBudget {
     // Kept for the visual character, but capped: the baseline device can't afford 60fps full-screen.
 
     /** Frame-rate ceiling for ambient animation (DynamicBackground etc.), in fps (ADR-0001 §7). */
-    val ambientFps: Int = 30
+    const val ambientFps: Int = 30
+
+    /**
+     * One ambient frame at [ambientFps], in nanoseconds. This is the single source of truth for
+     * the 30fps cadence — anything that throttles to the ambient budget (e.g.
+     * [com.applemusicktv.util.FrameRedrawThrottle]) derives its interval from here instead of
+     * repeating the literal.
+     */
+    const val ambientFrameIntervalNs: Long = 1_000_000_000L / ambientFps
 }
