@@ -3,6 +3,11 @@ package com.applemusicktv.ui
 import android.app.Activity
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,8 +20,10 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
@@ -31,6 +38,7 @@ import com.applemusicktv.ui.components.TopNavBar
 import com.applemusicktv.ui.navigation.Screen
 import com.applemusicktv.ui.navigation.TopNavTab
 import com.applemusicktv.ui.screens.*
+import com.applemusicktv.ui.theme.MotionBudget
 import java.net.URLDecoder
 import com.applemusicktv.ui.viewmodel.FrameStatsViewModel
 import com.applemusicktv.ui.viewmodel.LibraryViewModel
@@ -262,6 +270,15 @@ fun AppShell(modifier: Modifier = Modifier) {
             else playerVm.cardMotion(album).also { motionCache[album.id] = it }
         }
     }
+    // Page transitions: 200ms fade + 8dp vertical displacement, replacing navigation-compose's
+    // 700ms full-screen crossfade (ADR-0001 §4). Forward = new page rises 8dp into place while the
+    // old one drifts up; back = the mirror image, so both directions feel coherent. Durations and
+    // offsets come from MotionBudget so they can't drift from the rest of the motion work.
+    val density = LocalDensity.current
+    val pageOffsetPx = with(density) { MotionBudget.pageTransitionOffset.roundToPx() }
+    val pageFadeSpec = remember { tween<Float>(durationMillis = MotionBudget.pageTransitionMs) }
+    val pageSlideSpec = remember { tween<IntOffset>(durationMillis = MotionBudget.pageTransitionMs) }
+
     androidx.compose.runtime.CompositionLocalProvider(
         com.applemusicktv.ui.components.LocalCardMotion provides cardMotionResolver,
     ) {
@@ -272,6 +289,22 @@ fun AppShell(modifier: Modifier = Modifier) {
             modifier         = Modifier
                 .fillMaxSize()
                 .padding(top = if (isOnNowPlaying) 0.dp else navBarHeight),
+            enterTransition = {
+                fadeIn(pageFadeSpec) +
+                    slideInVertically(pageSlideSpec) { pageOffsetPx }
+            },
+            exitTransition = {
+                fadeOut(pageFadeSpec) +
+                    slideOutVertically(pageSlideSpec) { -pageOffsetPx }
+            },
+            popEnterTransition = {
+                fadeIn(pageFadeSpec) +
+                    slideInVertically(pageSlideSpec) { -pageOffsetPx }
+            },
+            popExitTransition = {
+                fadeOut(pageFadeSpec) +
+                    slideOutVertically(pageSlideSpec) { pageOffsetPx }
+            },
         ) {
             composable(Screen.Home.route) {
                 HomeScreen(
