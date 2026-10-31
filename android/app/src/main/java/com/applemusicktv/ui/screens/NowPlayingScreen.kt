@@ -84,6 +84,7 @@ import com.applemusicktv.ui.viewmodel.NavigationViewModel
 import com.applemusicktv.ui.viewmodel.NowPlayingBackground
 import com.applemusicktv.ui.viewmodel.PlayerViewModel
 import com.applemusicktv.ui.components.Glyph
+import com.applemusicktv.ui.theme.MotionBudget
 import com.applemusicktv.ui.viewmodel.RepeatMode
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -227,7 +228,8 @@ fun NowPlayingScreen(
         }
         androidx.compose.animation.Crossfade(
             targetState = npMode,
-            animationSpec = tween(450),
+            // ADR-0001 §5: mode switches stay inside the navigation-motion budget.
+            animationSpec = tween(MotionBudget.modeSwitchMs),
             modifier = Modifier.fillMaxSize(),
             label = "npMode",
         ) { mode -> when (mode) {
@@ -304,19 +306,16 @@ fun NowPlayingScreen(
                     val coverUrl = if (state.isLiveRadio && !state.isPlaying && state.radioStationArt != null)
                         state.radioStationArt else song.artworkUrl(600)
                     if (coverUrl != null) {
-                        androidx.compose.animation.Crossfade(
-                            targetState = coverUrl,
-                            animationSpec = tween(1000),
-                            label = "cover",
-                        ) { url ->
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(url).crossfade(1000).build(),
-                                contentDescription = song.title,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
+                        // Hard cut on song change (ADR-0001 §6): no Compose Crossfade and no Coil
+                        // crossfade — the background gradient's colour animation carries the
+                        // transition instead of two stacked fades.
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(coverUrl).build(),
+                            contentDescription = song.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
                     // DIAGNOSTIC: motion artwork spins up a SECOND ExoPlayer/video
                     // decoder. Gated off to test whether it starves the audio decoder
