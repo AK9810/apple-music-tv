@@ -242,6 +242,16 @@ fun DevMenuScreen(
             ) { showDev = !showDev }
 
             if (showDev) {
+                // Diagnostics first: every later performance ticket is verified against this
+                // overlay on the real TV. Default OFF, so it costs nothing until switched on.
+                SectionLabel(stringResource(R.string.settings_section_performance))
+                val frameStatsOn by vm.frameStatsOverlay.collectAsState()
+                Toggle(
+                    label = stringResource(R.string.settings_frame_stats), on = frameStatsOn,
+                    sub = stringResource(if (frameStatsOn) R.string.settings_frame_stats_on else R.string.settings_frame_stats_off),
+                    onToggle = { vm.toggleFrameStatsOverlay() },
+                )
+
                 SectionLabel(stringResource(R.string.settings_section_account))
                 StatusChip(
                     stringResource(R.string.settings_bearer_token), state.hasBearer,

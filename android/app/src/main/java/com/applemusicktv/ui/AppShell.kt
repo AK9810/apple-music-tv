@@ -26,11 +26,13 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.applemusicktv.R
+import com.applemusicktv.ui.components.FrameTimeOverlay
 import com.applemusicktv.ui.components.TopNavBar
 import com.applemusicktv.ui.navigation.Screen
 import com.applemusicktv.ui.navigation.TopNavTab
 import com.applemusicktv.ui.screens.*
 import java.net.URLDecoder
+import com.applemusicktv.ui.viewmodel.FrameStatsViewModel
 import com.applemusicktv.ui.viewmodel.LibraryViewModel
 import com.applemusicktv.ui.viewmodel.NavigationViewModel
 import com.applemusicktv.ui.viewmodel.PlayerViewModel
@@ -52,6 +54,10 @@ fun AppShell(modifier: Modifier = Modifier) {
     // Hoisted so a server re-check from the Dev menu can refetch both screens —
     // reconnecting is useless if the stale "server down" content stays on screen.
     val homeVm: com.applemusicktv.ui.viewmodel.HomeViewModel = hiltViewModel()
+    // Dev-menu frame-time overlay. Mounted here (above the NavHost) so it covers every screen;
+    // the prefs StateFlow makes the Dev-menu toggle apply immediately.
+    val frameStatsVm: FrameStatsViewModel = hiltViewModel()
+    val frameStatsOverlayOn by frameStatsVm.enabled.collectAsState()
 
     // Silently poll GitHub Releases at launch and every 3h after (a TV app stays open for
     // days, and the rolling `dev` build rolls forward constantly — a once-per-launch check
@@ -672,6 +678,14 @@ fun AppShell(modifier: Modifier = Modifier) {
                         }
                     }
                 },
+            )
+        }
+
+        // Dev-only frame-time readout, drawn above every screen (last child of the root Box).
+        // Not composed at all unless the Dev-menu switch is on, so normal users pay nothing.
+        if (frameStatsOverlayOn) {
+            FrameTimeOverlay(
+                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
             )
         }
 

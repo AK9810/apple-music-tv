@@ -3,6 +3,7 @@ package com.applemusicktv.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.applemusicktv.data.CrossfadePreferences
+import com.applemusicktv.data.FrameStatsPreferences
 import com.applemusicktv.data.LyricsOffsetPreferences
 import com.applemusicktv.data.MutPreferences
 import com.applemusicktv.data.ServerPreferences
@@ -46,6 +47,7 @@ class DevMenuViewModel @Inject constructor(
     private val lyricsOffsetPrefs: LyricsOffsetPreferences,
     private val crossfadePrefs: CrossfadePreferences,
     private val standalonePrefs: StandalonePreferences,
+    private val frameStatsPrefs: FrameStatsPreferences,
     private val beatAnalyzer: BeatAnalyzer,
 ) : ViewModel() {
 
@@ -58,6 +60,9 @@ class DevMenuViewModel @Inject constructor(
         standaloneOn   = standalonePrefs.isEnabled(),
     ))
     val state: StateFlow<DevMenuState> = _state
+
+    /** Performance overlay switch — a StateFlow so AppShell mounts/unmounts it without a restart. */
+    val frameStatsOverlay: StateFlow<Boolean> = frameStatsPrefs.enabled
 
     init { refresh() }
 
@@ -133,6 +138,13 @@ class DevMenuViewModel @Inject constructor(
         standalonePrefs.setEnabled(on)
         _state.update { it.copy(standaloneOn = on) }
         log("OK", "Standalone ${if (on) "ON" else "OFF"} — from next song")
+    }
+
+    /** Frame-time overlay is a diagnostics tool only: off means no listener and no ticker. */
+    fun toggleFrameStatsOverlay() {
+        val on = !frameStatsPrefs.isEnabled()
+        frameStatsPrefs.setEnabled(on)
+        log("INFO", "Frame-time overlay ${if (on) "ON" else "OFF"}")
     }
 
     /** Pre-formatted HTTP lines from the direct client's interceptor. */
