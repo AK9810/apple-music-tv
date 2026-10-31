@@ -256,3 +256,13 @@ These are load-bearing; each one was a measured regression source. Re-check befo
 
 ## Back behaviour
 - Back from Library/Search/Now Playing/Browse/Dev → Listen Now. Only Listen Now offers the exit dialog.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues (`AK9810/apple-music-tv`), managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` at the repo root, ADRs in `docs/adr/` (both created lazily by `/domain-modeling`). See `docs/agents/domain.md`.
