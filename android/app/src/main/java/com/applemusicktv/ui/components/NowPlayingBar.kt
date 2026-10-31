@@ -87,8 +87,10 @@ private fun TransportBtn(icon: String, onClick: () -> Unit, isPrimary: Boolean =
             containerColor        = if (isPrimary) Color(0xFFFA233B) else Color.Transparent,
             focusedContainerColor = if (isPrimary) Color(0xFFE01F33) else Color(0xFF2A2A2A),
         ),
+        // Compact bar transport: scale + the focused container colour carry the focus state. No
+        // `glow` — it is a per-frame setShadowLayer blur, and at 10dp on a 34dp pill it was a
+        // measurable focus-move cost (ADR-0001 §3).
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.15f),
-        glow  = ClickableSurfaceDefaults.glow(focusedGlow = Glow(Color(0xFFFA233B).copy(alpha = 0.4f), 10.dp)),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Text(icon, fontSize = if (isPrimary) 14.sp else 12.sp, color = Color.White)
