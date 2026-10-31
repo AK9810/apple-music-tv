@@ -119,8 +119,8 @@
     <string name="settings_frame_stats">Frame time overlay</string>
     <string name="settings_frame_stats_on">P50/P90 frame duration + dropped frames, last 5 s</string>
     <string name="settings_frame_stats_off">Off — no frame metrics collected</string>
+    <string name="frame_stats_readout">P50 %1$s · P90 %2$s · dropped %3$d</string>
     <string name="frame_stats_waiting">collecting…</string>
-    <string name="frame_stats_dropped">dropped</string>
 
     <!-- Settings: remote -->
     <string name="settings_remote_type">Remote type</string>
