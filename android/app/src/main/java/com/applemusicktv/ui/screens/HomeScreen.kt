@@ -67,7 +67,9 @@ fun HomeScreen(
         contentPadding = PaddingValues(top = 28.dp, bottom = 102.dp),
         verticalArrangement = Arrangement.spacedBy(28.dp),
     ) {
-        items(state.sections, key = { it.title }) { section ->
+        // Content type mirrors the row layout picked below (`picks` / `gradient` / standard row),
+        // so Lazy reuses subcompositions only between rows that render the same structure.
+        items(state.sections, key = { it.title }, contentType = { section -> section.style ?: "standard" }) { section ->
             // The hero row (a recommendation, never Recently Played) is chosen + styled server-side
             // and on the direct path, so just render whatever style the section carries.
             ContentRow(section, playerVm, onAlbumClick, onPlaylistClick, onCategoryClick, motionEnabled = !lowPower)

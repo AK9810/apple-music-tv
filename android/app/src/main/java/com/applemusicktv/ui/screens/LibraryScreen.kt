@@ -298,7 +298,7 @@ private fun PlaylistGrid(
         verticalArrangement = Arrangement.spacedBy(22.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        items(playlists, key = { it.id }) { playlist ->
+        items(playlists, key = { it.id }, contentType = { "playlist" }) { playlist ->
             PlaylistCard(
                 playlist    = playlist,
                 pinned      = playlist.id in pinnedIds,
@@ -395,7 +395,7 @@ private fun AlbumGrid(albums: List<Album>, onAlbumClick: (String) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(22.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        items(albums, key = { it.id }) { album ->
+        items(albums, key = { it.id }, contentType = { "album" }) { album ->
             AlbumCard(album = album, size = 150, onClick = { onAlbumClick(album.id) })
         }
     }
