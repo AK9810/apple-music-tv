@@ -1,15 +1,18 @@
-# Apple Music TV — v1.6
+# Apple Music TV — v1.7
 
-- One-tap sign-in: the new **AMTV Companion** app on your phone signs in to Apple Music and delivers the token to the TV by itself — no more copying long tokens.
+- A render-performance release for low-powered TVs: the focus glow is gone, page transitions went from 700ms to 200ms, Now Playing artwork cuts in instead of cross-fading, and the ambient background is capped at 30fps.
 
-*📱 Two ways to sign in*
-Setup step 2 now lays out both routes. **Method 1 (original):** open the TV's :8080 page in a phone browser and paste your Music-User-Token. **Method 2 (new):** install the AMTV Companion APK — the TV serves it itself (`http://<TV>:8080/companion.apk`, QR + address on the sign-in screen) — pair it once with the TV's address, sign in inside its WebView, and the token lands on the TV; the setup flow advances on its own.
+*⚡ Focus: glow → outline*
+Cards and transport controls no longer draw tv-material's blurred `glow` shadow — every focused card was running a real `setShadowLayer` blur each frame. Focus is now a 1.5dp white outline plus a subtle 1.05–1.08 scale, closer to Netflix / Google TV; compact transport buttons keep the filled, slightly larger look.
 
-*🤝 How the companion works*
-The companion is a minimal WebView shell: it opens music.apple.com with a desktop identity so you get the full web player, then captures the token **natively** — from the cookie jar and from the `media-user-token` request header your player already sends — and hands it to the TV over your LAN. Nothing is injected into Apple's pages, so there is nothing to break when Apple redesigns. The Apple session lives only in the companion's private storage on your phone; uninstalling the app clears it.
+*🚀 Navigation is 200ms*
+Full-screen page changes used navigation-compose's default 700ms crossfade — the most stutter-prone moment in the app. They're now a 200ms fade with an 8dp vertical shift. Now Playing's mode switch (player / full-screen lyrics / screensaver) drops from 450ms to 250ms.
 
-*🧹 Removed*
-The bookmarklet ("bookmark script") token route — its in-page extraction never worked reliably. The manual paste box and the DevTools token guide remain as the no-app fallback.
+*🎨 Now Playing*
+Artwork switches with a hard cut: the old double crossfade (Compose + Coil, 1s each) is gone, and the mood is carried by the 1.5s background tint animation instead. The ambient gradient background renders at 30fps instead of 60 — the drift cycles last 15–34s, so it looks the same while halving the full-screen draw cost.
 
 *🔧 Under the hood*
-`MutPreferences` now exposes the token as a StateFlow, so the onboarding screen reacts the instant a token arrives. The token sync to the PC proxy is fire-and-forget: a sleeping PC no longer turns a successful sign-in into an error. The :8080 status page logs token saves, and the companion logs its capture/delivery under the `AMTVCompanion` tag for diagnosis.
+Every duration now comes from one `MotionBudget` object (focus 100–160ms, navigation 200ms, ambient 30fps). The numbers are a budget measured on the baseline device, so an animation that exceeds them counts as a regression rather than a taste decision. Lazy grids get `contentType` for better recycling, the Now Playing EqBars read their animation values in the draw phase instead of recomposing, and Compose compiler stability reports are generated in the build. The Dev menu gained a frame-time overlay with per-frame stats for on-device comparison.
+
+*📄 Docs*
+The rationale is written up in `docs/adr/0001-tv-motion-and-render-principles.md`, with the Compose stability baseline and the perf roadmap next to it in `docs/performance/`.
