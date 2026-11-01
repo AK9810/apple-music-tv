@@ -84,6 +84,7 @@ import com.applemusicktv.ui.viewmodel.NavigationViewModel
 import com.applemusicktv.ui.viewmodel.NowPlayingBackground
 import com.applemusicktv.ui.viewmodel.PlayerViewModel
 import com.applemusicktv.ui.components.Glyph
+import com.applemusicktv.ui.theme.MotionBudget
 import com.applemusicktv.ui.viewmodel.RepeatMode
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -227,7 +228,8 @@ fun NowPlayingScreen(
         }
         androidx.compose.animation.Crossfade(
             targetState = npMode,
-            animationSpec = tween(450),
+            // ADR-0001 §5: mode switches stay inside the navigation-motion budget.
+            animationSpec = tween(MotionBudget.modeSwitchMs),
             modifier = Modifier.fillMaxSize(),
             label = "npMode",
         ) { mode -> when (mode) {
@@ -299,24 +301,21 @@ fun NowPlayingScreen(
                         .clip(RoundedCornerShape(if (state.artworkRounded) 18.dp else 0.dp))
                         .background(Color(0xFF1A1A2E)),
                 ) {
-                    // Cross-fade the cover instead of hard-swapping it on song change. Live radio
-                    // paused → show the station's own cover (there's no "current track" while paused).
+                    // Live radio paused → show the station's own cover (there's no "current track"
+                    // while paused).
                     val coverUrl = if (state.isLiveRadio && !state.isPlaying && state.radioStationArt != null)
                         state.radioStationArt else song.artworkUrl(600)
                     if (coverUrl != null) {
-                        androidx.compose.animation.Crossfade(
-                            targetState = coverUrl,
-                            animationSpec = tween(1000),
-                            label = "cover",
-                        ) { url ->
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(url).crossfade(1000).build(),
-                                contentDescription = song.title,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
+                        // Hard cut on song change (ADR-0001 §6): no Compose Crossfade and no Coil
+                        // crossfade — the background gradient's colour animation carries the
+                        // transition instead of two stacked fades.
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(coverUrl).build(),
+                            contentDescription = song.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
                     }
                     // DIAGNOSTIC: motion artwork spins up a SECOND ExoPlayer/video
                     // decoder. Gated off to test whether it starves the audio decoder
@@ -1947,8 +1946,10 @@ private fun TransportButton(
             containerColor        = Color.Transparent,
             focusedContainerColor = Color(0x22FFFFFF),
         ),
+        // No `glow` on transport buttons: scale + focused container tint only. tv-material's glow
+        // draws a real setShadowLayer blur while focused (ADR-0001 §3), and these buttons sit in the
+        // row that's re-laid out on every playback state change.
         scale  = ClickableSurfaceDefaults.scale(focusedScale = 1.10f),
-        glow   = ClickableSurfaceDefaults.glow(focusedGlow = Glow(Color.White.copy(alpha = 0.3f), 10.dp)),
         border = ClickableSurfaceDefaults.border(border = noBorder, focusedBorder = noBorder),
         modifier = modifier.size(btnSize),
     ) {

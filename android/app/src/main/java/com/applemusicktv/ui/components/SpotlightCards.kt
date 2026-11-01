@@ -56,10 +56,11 @@ fun SpotlightHeroCard(album: Album, width: Int = 360, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier.width(width.dp),
+        // No `glow`: tv-material's glow is a per-frame setShadowLayer blur (ADR-0001 §3). Focus is
+        // expressed by the border + scale alone.
         scale = CardDefaults.scale(focusedScale = 1.05f, pressedScale = 0.97f),
-        glow = CardDefaults.glow(focusedGlow = Glow(Color.White.copy(alpha = 0.28f), 22.dp)),
         border = CardDefaults.border(focusedBorder = Border(
-            border = BorderStroke(2.5.dp, Color.White.copy(alpha = 0.85f)),
+            border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.85f)),
             shape = RoundedCornerShape(9.dp))),
         colors = CardDefaults.colors(containerColor = Color.Transparent, focusedContainerColor = Color.Transparent),
         shape = CardDefaults.shape(RoundedCornerShape(9.dp)),
@@ -115,10 +116,11 @@ fun GradientCard(album: Album, width: Int = 250, onClick: () -> Unit, onLongClic
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = Modifier.width(width.dp).onFocusChanged { focused = it.isFocused || it.hasFocus },
+        // No `glow`: tv-material's glow is a per-frame setShadowLayer blur (ADR-0001 §3). Focus is
+        // expressed by the border + scale alone.
         scale = CardDefaults.scale(focusedScale = 1.06f, pressedScale = 0.97f),
-        glow = CardDefaults.glow(focusedGlow = Glow(Color.White.copy(alpha = 0.28f), 22.dp)),
         border = CardDefaults.border(focusedBorder = Border(
-            border = BorderStroke(2.dp, Color.White.copy(alpha = 0.7f)),
+            border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.7f)),
             shape = RoundedCornerShape(16.dp))),
         colors = CardDefaults.colors(containerColor = Color.Transparent, focusedContainerColor = Color.Transparent),
         shape = CardDefaults.shape(RoundedCornerShape(16.dp)),
