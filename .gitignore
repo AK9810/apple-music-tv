@@ -39,6 +39,7 @@ server/.bento4/
 
 # ─── Agent tooling (local plans/state, never commit) ──────────────────
 .zcode/
+skills-lock.json
 
 # ─── IDE / OS ─────────────────────────────────────────────────────────
 .idea/
