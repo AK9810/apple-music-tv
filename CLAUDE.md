@@ -33,6 +33,8 @@ GitHub Actions (`.github/workflows/android.yml`) builds the debug APK on every p
 
 **Download links are version-agnostic.** Every stable release also carries a fixed-name `AppleMusicTV.apk`, and the README badges link to `releases/latest/download/AppleMusicTV.apk`. Never point a download link at `releases/download/dev/...` (that is the rolling prerelease, which lags a stable cut) or at a versioned asset name — either would need editing on every release, which is exactly how the badge once kept serving an old build.
 
+**The `dev` tag moves on every `main` push — expect a local tag conflict.** CI deletes and re-creates the rolling `dev` release (and its tag) each time, so the remote tag advances while the local one still points at the previous build; the next `git fetch --tags` then aborts the *whole* ref update with `! [rejected] dev -> dev (would clobber existing tag)`. Sync it with `git fetch origin +refs/tags/dev:refs/tags/dev --no-tags` (or `git tag -d dev` and re-fetch). Moving the tag never re-triggers the workflow: `dev` deliberately doesn't match the `tags:` patterns.
+
 ## Build config
 - AGP 8.7.0, Kotlin 2.1.20, KSP 2.1.20-1.0.31, Gradle 8.9, Hilt 2.56
 - JDK: Android Studio's bundled JBR (`.../Contents/Home`)
