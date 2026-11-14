@@ -44,7 +44,9 @@ iOS 不接受 `http://` 的导入目标，所以一键链接指向 https 上的�
 如果设置时手机上不了互联网，电视仍然可以把文件交给你：
 
 1. 在同一个设置页上点 **Download the Shortcut from this TV**。
-2. 在**文件**中打开下载的 `send-token-to-tv.shortcut`。
+2. 在**文件**中打开下载的 `Send Token to TV.shortcut`。链接路径是连字符形式
+   `/send-token-to-tv.shortcut`，但保存到「文件」里的文件名保留空格 —— 导入后的快捷指令
+   就用这个名字。
 3. 点 **Add**。
 
 这与一键安装是同一份签名文件 —— 只是 URL 不同，不是第二份构建。换手机时，重复任一种安装
@@ -80,12 +82,12 @@ iOS 不接受 `http://` 的导入目标，所以一键链接指向 https 上的�
 
 | 现象 | 含义与处理 |
 | --- | --- |
-| `No token on this page. Sign in at music.apple.com in Safari, then run this Shortcut from that page's share sheet.` | 没有签入，或页面上没有 `media-user-token` 这个 Cookie。**在 Safari 中**签入 `music.apple.com`，留在该页面，再从它的分享面板运行快捷指令。 |
+| `No token on this page. Sign in at music.apple.com in Safari, then run this Shortcut from that page share sheet.` | 没有签入，或页面上没有 `media-user-token` 这个 Cookie。**在 Safari 中**签入 `music.apple.com`，留在该页面，再从它的分享面板运行快捷指令。 |
 | 快捷指令停在「在网页上运行 JavaScript」（`Run JavaScript on Web Page`）动作并报错；没有任何通知。 | **允许运行脚本**关着。设置 → 快捷指令 → 高级 → 允许运行脚本 = 开，然后重新运行。 |
 | Safari 分享面板里没有 **Send Token to TV**，或运行以「页面上没有 Token」的通知结束。 | **分享面板可用**关着，或快捷指令是从「快捷指令」app 运行的，或页面开在 Chrome / Firefox 里。把「在分享表单中显示」设为开（接收 Safari 网页），在 Safari 中打开页面并从那里分享 —— Chrome 和 Firefox 不会把页面交给这个动作。 |
 | 手机明明连着 Wi-Fi，每次运行都连不上电视。 | **本地网络权限**被拒绝了。设置 → 隐私与安全性 → 本地网络 → 快捷指令 = 开，然后重新运行。 |
 | iOS 显示 `Could not connect to the server.`（中文系统显示 `无法连接服务器`）。 | 电视不可达。这是 iOS 自己的提示，不是快捷指令发的通知。检查手机和电视是否在同一 Wi-Fi、电视 app 是否在运行、以及 `TV address` 是否与电视页面顶部的地址一致。 |
-| `The TV answered but did not keep the token. Run it again, or paste the token on the TV's setup page.` | 电视回应了，但没有保存 Token。再运行一次；如果仍然如此，用下面的兜底方式。 |
+| `The TV answered but did not keep the token. Run it again, or paste the token on the TV setup page.` | 电视回应了，但没有保存 Token。再运行一次；如果仍然如此，用下面的兜底方式。 |
 | 资料库用了几个月后突然变空；歌曲播不了。 | Token 大约六个月有效。在 Safari 中重新签入 `music.apple.com`，再运行一次快捷指令 —— 不需要重新导入。 |
 
 ## Token 有效期
@@ -98,7 +100,8 @@ MUT 大约六个月有效。快捷指令和电视都不需要为此更新；过�
 ### 在电视页面手动粘贴
 
 打开 `http://<TV_IP>:8080`，找到 **Set Token** 卡片，把 Token 粘进输入框并点 **Save Token**。
-页面会显示 `Token received ✓`。要粘贴的值就是 `media-user-token` 这个 Cookie；如何复制它见
+表单会 POST 到 `/set-token`，电视随后重定向回 `/`；页面上的 Status 卡片变绿，显示
+`Music-User-Token active`。要粘贴的值就是 `media-user-token` 这个 Cookie；如何复制它见
 [TECHNICAL.zh-CN.md](TECHNICAL.zh-CN.md#获取你的-music-user-token) 中的桌面步骤，或下面的
 Mac 走查。
 

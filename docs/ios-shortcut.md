@@ -53,7 +53,9 @@ If the phone cannot reach the internet during setup, the TV can still deliver th
 file:
 
 1. On the same setup page, tap **Download the Shortcut from this TV**.
-2. Open the downloaded `send-token-to-tv.shortcut` in **Files**.
+2. Open the downloaded `Send Token to TV.shortcut` in **Files**. (The link's path
+   is hyphenated, `/send-token-to-tv.shortcut`; the saved file keeps the spaces in
+   its name, which is what names the Shortcut on import.)
 3. Tap **Add**.
 
 This is the identical signed file as the one-tap path — a different URL, not a
@@ -94,12 +96,12 @@ also makes the TV look signed in, so confirm the library and play a song.
 
 | Symptom | What it means and what to do |
 | --- | --- |
-| `No token on this page. Sign in at music.apple.com in Safari, then run this Shortcut from that page's share sheet.` | Not signed in, or the page carries no `media-user-token` cookie. Sign in at `music.apple.com` **in Safari**, stay on that page, and run the Shortcut from its share sheet. |
+| `No token on this page. Sign in at music.apple.com in Safari, then run this Shortcut from that page share sheet.` | Not signed in, or the page carries no `media-user-token` cookie. Sign in at `music.apple.com` **in Safari**, stay on that page, and run the Shortcut from its share sheet. |
 | The Shortcut stops at the JavaScript step (`Run JavaScript on Web Page`) with an error; no notification appears. | **Allow Running Scripts** is off. Settings → Shortcuts → Advanced → Allow Running Scripts = on, then run again. |
 | **Send Token to TV** is missing from Safari's share sheet, or the run ends with the no-token notification. | **Share-sheet availability** is off, the Shortcut was run from the Shortcuts app, or the page is in Chrome / Firefox. Set Show in Share Sheet = on for Safari web pages, open the page in Safari, and share from there — Chrome and Firefox do not hand the page to the action. |
 | Every run fails to reach the TV even though the phone is on Wi-Fi. | **Local Network permission** was denied. Settings → Privacy & Security → Local Network → Shortcuts = on, then run again. |
 | iOS shows `Could not connect to the server.` (Chinese device: `无法连接服务器`). | The TV is unreachable. This is iOS's own alert, not a notification from the Shortcut. Check that the phone and TV are on the same Wi-Fi, that the TV app is running, and that `TV address` matches the address at the top of the TV page. |
-| `The TV answered but did not keep the token. Run it again, or paste the token on the TV's setup page.` | The TV received the hand-off but did not store the token. Run it again; if it repeats, use a fallback below. |
+| `The TV answered but did not keep the token. Run it again, or paste the token on the TV setup page.` | The TV received the hand-off but did not store the token. Run it again; if it repeats, use a fallback below. |
 | The library worked for months, then emptied; songs stop playing. | The token lasts roughly six months. Sign in at `music.apple.com` in Safari and run the Shortcut again — no re-import is needed. |
 
 ## Token lifetime
@@ -114,8 +116,9 @@ signal.
 ### Paste the token on the TV page
 
 Open `http://<TV_IP>:8080`, find the **Set Token** card, paste the token into the
-box and tap **Save Token**. The page confirms with `Token received ✓`. The value
-to paste is the `media-user-token` cookie; the desktop steps in
+box and tap **Save Token**. The form POSTs to `/set-token` and the TV redirects
+back to `/`, where the Status card turns green and reads `Music-User-Token
+active`. The value to paste is the `media-user-token` cookie; the desktop steps in
 [TECHNICAL.md](TECHNICAL.md#getting-your-music-user-token) or the Mac walkthrough
 below show how to copy it.
 

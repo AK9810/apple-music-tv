@@ -11,8 +11,9 @@ Setting up a phone? The user-facing walkthrough is
 [the iOS Shortcut setup guide](../docs/ios-shortcut.md); this page is the
 maintainer-facing recipe, signing and verification record.
 
-The TV side already exists and is unchanged: `POST /set-token` with a form field
-`mut`, then `GET /status` for `hasMUT`. This directory is only about the phone.
+The hand-off protocol is unchanged: `POST /set-token` with a form field `mut`,
+then `GET /status` for `hasMUT`. The setup page and the route that serves it were
+added in #14; this directory is only about the phone.
 
 ## What is here
 
@@ -136,10 +137,14 @@ Actions, in order:
         the TV can now play your library.`
       - **Otherwise** → **Show Notification** — title `Apple Music TV`; body
         `The TV answered but did not keep the token. Run it again, or paste the
-        token on the TV's setup page.`
+        token on the TV setup page.`
 5. **Otherwise** → **Show Notification** — title `Apple Music TV`; body `No token
    on this page. Sign in at music.apple.com in Safari, then run this Shortcut
-   from that page's share sheet.`
+   from that page share sheet.`
+
+The shipped plist has no possessive apostrophes in those two bodies (`TV setup
+page`, `page share sheet`); the text above follows the artifact so a rebuild
+reproduces what ships.
 
 The empty token branches *before* the POST, so an empty value is never written.
 `Otherwise` is inserted as its own action (search for it while inside the `If`
