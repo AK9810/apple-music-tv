@@ -63,7 +63,7 @@
    adb install -r AppleMusicTV.apk
    ```
    （也可以使用 Downloader 之类的侧载应用，直接填入 Release 下载地址。）
-3. **添加你的 Music-User-Token** —— 在手机上打开 `http://<TV_IP>:8080` 并粘贴。 [如何获取 Token →](TECHNICAL.zh-CN.md#获取你的-music-user-token)
+3. **添加你的 Music-User-Token** —— 在手机上打开 `http://<TV_IP>:8080` 并粘贴。iPhone / iPad 请按 [iOS 快捷指令设置指南](ios-shortcut.zh-CN.md) 操作 —— 桌面浏览器的开发者工具路径在 iOS 上不存在。 [如何获取 Token →](TECHNICAL.zh-CN.md#获取你的-music-user-token)
 
 独立模式不需要任何服务器。可选的 PC 代理方式见[技术文档](TECHNICAL.zh-CN.md#可选的-pc-代理服务器)。
 
@@ -73,7 +73,7 @@
 
 使用 Jetpack Compose for TV、Media3（ExoPlayer）、Hilt、Retrofit/Moshi 和 Coil 构建。可选的代理服务器是一个基于 Bun + Hono 的应用，封装了 Apple Music 的 Web API。
 
-架构、设备端 Widevine/CENC 管线、认证流程、CI 和构建说明都在 **[TECHNICAL.zh-CN.md](TECHNICAL.zh-CN.md)** 中。深入阅读：[Apple Music API 笔记](apple-music-api.zh-CN.md) · [MUT 流程](mut-flow.zh-CN.md) · [投影模式](PROJECTOR_MODE_NOTES.zh-CN.md) · [ADR-0002：iOS 用快捷指令而不是 app](adr/0002-ios-shortcut-instead-of-an-app.md)。
+架构、设备端 Widevine/CENC 管线、认证流程、CI 和构建说明都在 **[TECHNICAL.zh-CN.md](TECHNICAL.zh-CN.md)** 中。深入阅读：[Apple Music API 笔记](apple-music-api.zh-CN.md) · [MUT 流程](mut-flow.zh-CN.md) · [iOS 快捷指令设置](ios-shortcut.zh-CN.md) · [投影模式](PROJECTOR_MODE_NOTES.zh-CN.md) · [ADR-0002：iOS 用快捷指令而不是 app](adr/0002-ios-shortcut-instead-of-an-app.md)。
 
 构建方法见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)，Token 处理见 [SECURITY.zh-CN.md](SECURITY.zh-CN.md)，后续计划见 [ROADMAP.zh-CN.md](ROADMAP.zh-CN.md)。
 

@@ -63,7 +63,7 @@
    adb install -r AppleMusicTV.apk
    ```
    (Or use a sideload app like Downloader with the release URL.)
-3. **Add your Music-User-Token** — open `http://<TV_IP>:8080` on your phone and paste it in. [How to find your token →](docs/TECHNICAL.md#getting-your-music-user-token)
+3. **Add your Music-User-Token** — open `http://<TV_IP>:8080` on your phone and paste it in. On an iPhone or iPad, follow the [iOS Shortcut setup guide](docs/ios-shortcut.md) instead: the desktop DevTools path does not exist there. [How to find your token →](docs/TECHNICAL.md#getting-your-music-user-token)
 
 Standalone mode needs no server. The optional PC proxy path is described in the [technical guide](docs/TECHNICAL.md#optional-pc-proxy-server).
 
@@ -73,7 +73,7 @@ Standalone mode needs no server. The optional PC proxy path is described in the 
 
 Built with Jetpack Compose for TV, Media3 (ExoPlayer), Hilt, Retrofit/Moshi and Coil. The optional proxy server is a Bun + Hono app wrapping Apple Music's web APIs.
 
-Architecture, the on-device Widevine/CENC pipeline, the auth flow, CI, and build notes live in **[docs/TECHNICAL.md](docs/TECHNICAL.md)**. Deeper dives: [Apple Music API notes](docs/apple-music-api.md) · [MUT flow](docs/mut-flow.md) · [Projector mode](docs/PROJECTOR_MODE_NOTES.md) · [ADR-0002: iOS Shortcut, not an app](docs/adr/0002-ios-shortcut-instead-of-an-app.md).
+Architecture, the on-device Widevine/CENC pipeline, the auth flow, CI, and build notes live in **[docs/TECHNICAL.md](docs/TECHNICAL.md)**. Deeper dives: [Apple Music API notes](docs/apple-music-api.md) · [MUT flow](docs/mut-flow.md) · [iOS Shortcut setup](docs/ios-shortcut.md) · [Projector mode](docs/PROJECTOR_MODE_NOTES.md) · [ADR-0002: iOS Shortcut, not an app](docs/adr/0002-ios-shortcut-instead-of-an-app.md).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to build it, [SECURITY.md](SECURITY.md) for token handling, and [ROADMAP.md](ROADMAP.md) for what's planned.
 

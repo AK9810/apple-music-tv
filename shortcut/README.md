@@ -7,6 +7,10 @@ The iPhone and iPad path to a Music-User-Token (MUT): a signed Shortcut reads
 token to the TV's port-8080 server. No iOS app, no Xcode, no developer account —
 the reasoning is in [ADR-0002](../docs/adr/0002-ios-shortcut-instead-of-an-app.md).
 
+Setting up a phone? The user-facing walkthrough is
+[the iOS Shortcut setup guide](../docs/ios-shortcut.md); this page is the
+maintainer-facing recipe, signing and verification record.
+
 The TV side already exists and is unchanged: `POST /set-token` with a form field
 `mut`, then `GET /status` for `hasMUT`. This directory is only about the phone.
 

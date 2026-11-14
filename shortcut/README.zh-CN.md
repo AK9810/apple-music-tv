@@ -7,6 +7,9 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 不需要 iOS app，不需要 Xcode，也不需要开发者账号 —— 为什么这样选见
 [ADR-0002](../docs/adr/0002-ios-shortcut-instead-of-an-app.md)。
 
+准备在手机上设置？面向用户的完整走查在
+[iOS 快捷指令设置指南](../docs/ios-shortcut.zh-CN.md)；本页是面向维护者的配方、签名与验证记录。
+
 电视一侧早已存在且不做改动：`POST /set-token`（表单字段 `mut`），然后 `GET /status` 读 `hasMUT`。
 这个目录只负责手机侧。
 
