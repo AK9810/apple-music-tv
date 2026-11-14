@@ -7,8 +7,11 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 不需要 iOS app，不需要 Xcode，也不需要开发者账号 —— 为什么这样选见
 [ADR-0002](../docs/adr/0002-ios-shortcut-instead-of-an-app.md)。
 
-电视一侧早已存在且不做改动：`POST /set-token`（表单字段 `mut`），然后 `GET /status` 读 `hasMUT`。
-这个目录只负责手机侧。
+准备在手机上设置？面向用户的完整走查在
+[iOS 快捷指令设置指南](../docs/ios-shortcut.zh-CN.md)；本页是面向维护者的配方、签名与验证记录。
+
+交接协议不变：`POST /set-token`（表单字段 `mut`），然后 `GET /status` 读 `hasMUT`。
+电视设置页和这条路由是 #14 加入的；本目录只负责手机侧。
 
 ## 目录内容
 
@@ -108,9 +111,12 @@ curl -sL https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-To
    4. **如果** `Status text` **包含** `"hasMUT":true`
       - **显示通知** —— 标题 `Apple Music TV`；正文 `Token received — the TV can now play your library.`
       - **否则** → **显示通知** —— 标题 `Apple Music TV`；正文 `The TV answered but did not keep the
-        token. Run it again, or paste the token on the TV's setup page.`
+        token. Run it again, or paste the token on the TV setup page.`
 5. **否则** → **显示通知** —— 标题 `Apple Music TV`；正文 `No token on this page. Sign in at
-   music.apple.com in Safari, then run this Shortcut from that page's share sheet.`
+   music.apple.com in Safari, then run this Shortcut from that page share sheet.`
+
+已发布的 plist 里这两条正文没有所有格撇号（`TV setup page`、`page share sheet`）；
+上面的文字以产物为准，这样重建出来的就是线上那一份。
 
 Token 为空的分支在 POST **之前**，所以空值永远不会被写进去。`否则` 是单独插入的动作
 （在 `如果` 块里搜索「否则」），不是某个开关。

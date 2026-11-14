@@ -26,6 +26,8 @@
 
 ## 获取你的 Music-User-Token
 
+iPhone / iPad 上没有开发者工具，请按 [iOS 快捷指令设置指南](ios-shortcut.zh-CN.md) 操作；下面的步骤适用于桌面浏览器。
+
 电视上运行着一个监听 **8080** 端口的小型 Web 服务器。在手机上打开 `http://<TV_IP>:8080` 并粘贴你的 Music-User-Token。它会保存在设备上（如果你使用代理服务器，也会同步过去）。
 
 获取 Token 的步骤：
@@ -33,7 +35,7 @@
 2. 开发者工具 → Network 面板。
 3. 点击任意会加载音乐内容的操作。
 4. 找到任意发往 `amp-api-edge.music.apple.com` 的请求。
-5. 复制 `Music-User-Token` 请求头的值。
+5. 复制 `Media-User-Token` 请求头的值。
 
 **bearer token** 会从 `music.apple.com` 的 JS bundle 中自动抓取 —— 你永远不需要手动设置它。
 

@@ -26,6 +26,8 @@ Toggle in **⚙ Settings → Playback → Standalone**, or point the app at a PC
 
 ## Getting your Music-User-Token
 
+On an iPhone or iPad there is no DevTools: follow the [iOS Shortcut setup guide](ios-shortcut.md). The steps below are for a desktop browser.
+
 The TV runs a small web server on port **8080**. Open `http://<TV_IP>:8080` on your phone and paste your Music-User-Token. It's stored on-device (and synced to the proxy server if you use one).
 
 To find the token:
@@ -33,7 +35,7 @@ To find the token:
 2. DevTools → Network tab.
 3. Click anything that loads music content.
 4. Find any request to `amp-api-edge.music.apple.com`.
-5. Copy the `Music-User-Token` request header value.
+5. Copy the `Media-User-Token` request header value.
 
 The **bearer token** is scraped automatically from `music.apple.com`'s JS bundle — you never set it by hand.
 
