@@ -68,10 +68,14 @@ Actions, in order:
 1. **Run JavaScript on Web Page** — rename its output `Token`; input Shortcut
    Input (the Safari web page); script below. Put it first: the first action's
    input is the shared webpage by default.
-2. **Text** — rename the action `TV address`; value `http://<TV_IP>:8080`, the
-   address the TV shows on its setup page, no trailing slash. This is the only
-   action a user edits after import: the signature gates import, not later edits.
-3. **If** `Token` **has any value**
+2. **Comment** — the prompt above the address: replace `TV-IP` with the address
+   shown on the TV's setup page, for example `http://192.168.1.4:8080`, with no
+   trailing slash.
+3. **Text** — rename the action `TV address`; value `http://TV-IP:8080`. Every
+   user edits this after import: the signature gates import, not later edits. The
+   placeholder is deliberately not a real address, so an unedited run fails
+   visibly instead of probing some other device.
+4. **If** `Token` **has any value**
    1. **Get Contents of URL** — URL: `TV address` + `/set-token`; Method `POST`;
       Request Body `Form`; one field `mut` = `Token`.
    2. **Get Contents of URL** — URL: `TV address` + `/status`; Method `GET`.
@@ -91,8 +95,8 @@ The empty token branches *before* the POST, so an empty value is never written.
 block), not toggled.
 
 To point an action at a variable, tap the parameter field and pick the action
-from *Select Variable* — renaming actions in step 1 and 2 is what makes the
-variable names unambiguous.
+from *Select Variable* — renaming the JavaScript action and the Text action is
+what makes the variable names unambiguous.
 
 ### Why the status check is a text match
 
@@ -134,7 +138,7 @@ Shortcuts has no try/catch, and `Get Contents of URL` stops the Shortcut when th
 connection fails. So "TV unreachable" is iOS's own **Could not connect to the
 server** alert, not a notification from us — still distinct from both
 notifications above, and it arrives before `/status` is read. The user checks
-Wi-Fi, that the TV app is running, and the address in action 1. Do not "fix" this
+Wi-Fi, that the TV app is running, and the address in action 3. Do not "fix" this
 by posting the token in a URL: not putting the token in a URL is one of the
 design's requirements ([#10](https://github.com/AK9810/apple-music-tv/issues/10)).
 
