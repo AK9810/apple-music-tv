@@ -15,7 +15,7 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 | 路径 | 是什么 |
 | --- | --- |
 | `source/Send Token to TV.shortcut` | 未签名源文件，就是被签名的那份。正常情况下是从「快捷指令」app 导出的文件；当前这份是生成的脚手架，来源记录在 [`VERIFICATION.md`](VERIFICATION.md)。 |
-| `Send Token to TV.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它；等 [#14](https://github.com/AK9810/apple-music-tv/issues/14) 完成后电视也会提供下载。 |
+| `Send Token to TV.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它；电视在 `/send-token-to-tv.shortcut` 提供下载，页面的 iOS 路径用它作为离线安装方式。 |
 | `sign.sh` | 给 source 签名，并校验 AEA1 文件头。 |
 | `VERIFICATION.md` | 支撑这个产物可以发布的真机验证记录。 |
 

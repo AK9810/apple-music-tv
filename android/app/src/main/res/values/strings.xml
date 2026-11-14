@@ -411,6 +411,7 @@
     <string name="signin_method1_title">Method 1 · Phone browser + paste (original)</string>
     <string name="signin_method1_body">Open the address above on your phone (or scan the upper code on the right) and paste your Music-User-Token on that page — this screen continues by itself.</string>
     <string name="signin_method2_body">Install the AMTV Companion APK on an Android phone on the same Wi-Fi (scan the code on the right to download it), enter the address above there and sign in to Apple Music — the token is sent to the TV automatically.</string>
+    <string name="signin_ios_hint">On iPhone or iPad, scan the upper code — that page shows the Shortcut install steps.</string>
     <string name="signin_method2_url_hint">Same Wi-Fi? The APK can also be downloaded directly in a phone browser:</string>
     <string name="signin_method2_title">Method 2 · Companion app (new)</string>
     <string name="signin_qr_page">Scan — open the paste page</string>

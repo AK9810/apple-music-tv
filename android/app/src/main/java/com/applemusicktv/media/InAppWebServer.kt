@@ -10,6 +10,7 @@ import com.applemusicktv.data.MutPreferences
 import com.applemusicktv.data.NetworkLog
 import com.applemusicktv.data.repository.MusicRepository
 import com.applemusicktv.util.FormBody
+import com.applemusicktv.util.PageAudience
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import java.io.*
@@ -211,14 +212,24 @@ class InAppWebServer @Inject constructor(
                 val buf = CharArray(len); reader.read(buf, 0, len); body = String(buf)
             }
             when {
-                method == "GET"  && path == "/"            -> send(out, 200, "text/html", html(inCompanion = (hdrs["user-agent"] ?: "").contains("AMTVCompanion")))
+                method == "GET"  && path == "/"            -> send(out, 200, "text/html", html(PageAudience.of(hdrs["user-agent"])))
                 method == "GET"  && path == "/status"      -> send(out, 200, "application/json", status())
                 method == "GET"  && path == "/logs"        -> send(out, 200, "application/json", logsJson())
                 method == "GET"  && path == "/stream"      -> { handleSse(socket, out); return }
 
                 method == "GET"  && path == "/netlogs"     -> send(out, 200, "application/json", netLogsJson())
                 method == "GET"  && path == "/report"      -> send(out, 200, "text/plain", bugReport(), "Content-Disposition: attachment; filename=\"amtv-bugreport.txt\"\r\n")
-                method == "GET"  && path == "/companion.apk" -> sendCompanionApk(out)
+                method == "GET"  && path == "/companion.apk" -> sendAsset(
+                    out, "companion.apk", "application/vnd.android.package-archive",
+                    "AMTVCompanion.apk", "Companion APK is not bundled in this build",
+                )
+                // The signed iOS Shortcut, for an install that needs no internet. Its asset
+                // name is the ASCII copy the Gradle task writes; the download filename keeps
+                // the spaces because the file name becomes the Shortcut's name on import.
+                method == "GET"  && path == "/send-token-to-tv.shortcut" -> sendAsset(
+                    out, "send-token-to-tv.shortcut", "application/octet-stream",
+                    "Send Token to TV.shortcut", "The iOS Shortcut is not bundled in this build",
+                )
                 // Top-level-navigation hand-off from the extraction script. The script runs inside
                 // Apple's HTTPS origin, where a fetch to a plain-HTTP LAN address is mixed-content
                 // blocked — only a full page navigation carries the token over (design: 2026-10-24).
@@ -355,17 +366,24 @@ body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;paddi
     private fun redirect(out: BufferedOutputStream, to: String) = send(out, 303, "text/plain", "", "Location: $to\r\n")
 
     /**
-     * The companion APK bundled in assets by the copyCompanionApk gradle task (see
-     * app/build.gradle.kts). Phones scan the QR on the onboarding sign-in step straight to
-     * here, so the install never depends on a GitHub release or a PC. send() is text-only,
-     * hence this byte variant.
+     * Serve a binary asset bundled by a Gradle copy task (see app/build.gradle.kts) — the
+     * companion APK and the signed iOS Shortcut. send() is text-only, hence this byte
+     * variant; the exact Content-Length and Connection: close matter to Safari's download
+     * handling, so both callers share one header path. A missing asset is a 404 in the
+     * caller's own words.
      */
-    private fun sendCompanionApk(out: BufferedOutputStream) {
-        val bytes = try { context.assets.open("companion.apk").use { it.readBytes() } }
-        catch (_: Exception) { send(out, 404, "text/plain", "Companion APK is not bundled in this build"); return }
-        val resp = "HTTP/1.1 200 OK\r\nContent-Type: application/vnd.android.package-archive\r\n" +
+    private fun sendAsset(
+        out: BufferedOutputStream,
+        asset: String,
+        contentType: String,
+        filename: String,
+        missing: String,
+    ) {
+        val bytes = try { context.assets.open(asset).use { it.readBytes() } }
+        catch (_: Exception) { send(out, 404, "text/plain", missing); return }
+        val resp = "HTTP/1.1 200 OK\r\nContent-Type: $contentType\r\n" +
             "Content-Length: ${bytes.size}\r\nConnection: close\r\n" +
-            "Content-Disposition: attachment; filename=\"AMTVCompanion.apk\"\r\n\r\n"
+            "Content-Disposition: attachment; filename=\"$filename\"\r\n\r\n"
         out.write(resp.toByteArray()); out.write(bytes)
     }
 
@@ -396,13 +414,14 @@ body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;paddi
     private fun netLogsJson() = "[${NetworkLog.getAll().joinToString(",") { "\"${it.replace("\"","'")}\"" }}]"
 
     /**
-     * The :8080 control page. [inCompanion] is true when the request comes from the companion
-     * app's WebView (UA marker) — its card is then the big "sign in" button that navigates the
-     * same WebView to music.apple.com; plain browsers instead get the bookmark script and a
-     * note about the companion app. The manual paste box below stays for everyone, as the
-     * fallback for when every automated path fails.
+     * The :8080 control page, branching on [PageAudience]. The companion app's WebView gets
+     * the big "sign in" button that navigates itself to music.apple.com; iOS gets the
+     * Shortcut install-and-run steps instead of Chrome DevTools, which does not exist on the
+     * phone; every other browser keeps the two-method card and the DevTools guide. The manual
+     * paste box below stays on every branch, as the fallback for when every automated path
+     * fails.
      */
-    private fun html(inCompanion: Boolean): String {
+    private fun html(audience: PageAudience.Audience): String {
         val has = prefs.hasMUT()
         val preview = if (has) prefs.getMUT().take(32) + "…" else ""
         val currentOffset = lyricsOffsetPrefs.getOffset()
@@ -421,6 +440,37 @@ body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;paddi
             val cls = when { log.contains("✓") -> "g"; log.contains("✗") -> "r"; else -> "d" }
             "<div class=$cls>${log.replace("<","&lt;")}</div>"
         }.ifEmpty { "<div class=d>No requests yet.</div>" }
+        val signInCard = when (audience) {
+            PageAudience.Audience.Companion -> """
+<div class=card>
+<h2>Sign in to Apple Music</h2>
+<div style="font-size:12px;color:#999;line-height:1.7;margin-bottom:10px">Sign in with your Apple ID (password and 2FA are painless here). Once you're signed in, the app sends the token to the TV on its own and reloads this page — then just go back to the TV.</div>
+<a class="btn btn-p" style=text-decoration:none href="https://music.apple.com/">Open music.apple.com &amp; sign in</a>
+</div>
+"""
+            PageAudience.Audience.Ios -> iosSignInCard()
+            PageAudience.Audience.Other -> """
+<div class=card>
+<h2>Two ways to sign in</h2>
+<div style="font-size:12px;color:#999;line-height:1.9"><strong style=color:#ccc>Method 1 · paste the token (original)</strong> — copy your Music-User-Token (guide in "How to get your token" below) and save it with the <strong style=color:#ccc>Set Token</strong> card on this page. Works in any browser.</div>
+<div style="font-size:12px;color:#999;line-height:1.9;margin-top:8px"><strong style=color:#6bcb77>Method 2 · companion app (automatic)</strong> — install the <strong style=color:#ccc>AMTV Companion</strong> APK on an Android phone on the same Wi-Fi, open it, type this TV's address (<span style="font-family:monospace;color:#aaa">${serverUrl()}</span>), and sign in to Apple Music there. The token lands here on its own. <a href=/companion.apk style=color:#fa233b>Download the companion APK here</a>.</div>
+</div>
+"""
+        }
+        // The DevTools walkthrough is only reachable from a desktop browser. iOS gets the
+        // fallbacks it can actually act on; Chrome's developer tools do not exist there.
+        val tokenGuideCard = if (audience == PageAudience.Audience.Ios) iosFallbackCard() else """
+<div class=card>
+<h2>How to get your token</h2>
+<ol>
+<li>Open <strong style=color:#ccc>music.apple.com</strong> in Chrome · sign in</li>
+<li>DevTools (F12) → Network tab</li>
+<li>Play any song</li>
+<li>Find request to <code>amp-api-edge.music.apple.com</code></li>
+<li>Copy the <code>Media-User-Token</code> request header value</li>
+</ol>
+</div>
+"""
         return """<!DOCTYPE html><html lang=en><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1">
 <title>Apple Music TV</title><style>
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;padding:20px;max-width:620px;margin:auto}
@@ -496,20 +546,7 @@ function legacyCopy(text,done,b){
 </div>
 </div>
 
-${if (inCompanion) """
-<div class=card>
-<h2>Sign in to Apple Music</h2>
-<div style="font-size:12px;color:#999;line-height:1.7;margin-bottom:10px">Sign in with your Apple ID (password and 2FA are painless here). Once you're signed in, the app sends the token to the TV on its own and reloads this page — then just go back to the TV.</div>
-<a class="btn btn-p" style=text-decoration:none href="https://music.apple.com/">Open music.apple.com &amp; sign in</a>
-</div>
-""" else """
-<div class=card>
-<h2>Two ways to sign in</h2>
-<div style="font-size:12px;color:#999;line-height:1.9"><strong style=color:#ccc>Method 1 · paste the token (original)</strong> — copy your Music-User-Token (guide in "How to get your token" below) and save it with the <strong style=color:#ccc>Set Token</strong> card on this page. Works in any browser.</div>
-<div style="font-size:12px;color:#999;line-height:1.9;margin-top:8px"><strong style=color:#6bcb77>Method 2 · companion app (automatic)</strong> — install the <strong style=color:#ccc>AMTV Companion</strong> APK on an Android phone on the same Wi-Fi, open it, type this TV's address (<span style="font-family:monospace;color:#aaa">${serverUrl()}</span>), and sign in to Apple Music there. The token lands here on its own. <a href=/companion.apk style=color:#fa233b>Download the companion APK here</a>.</div>
-</div>
-"""}
-
+${signInCard}
 <div class=card>
 <h2>Set Token</h2>
 <form method=POST action=/set-token>
@@ -589,16 +626,7 @@ ${if(has)"<form method=POST action=/clear-token><button class='btn btn-s' type=s
 <div style="font-size:10px;color:#555;margin-top:8px">Bundles app version, device, the last crash and recent app + network logs into one text file to share.</div>
 </div>
 
-<div class=card>
-<h2>How to get your token</h2>
-<ol>
-<li>Open <strong style=color:#ccc>music.apple.com</strong> in Chrome · sign in</li>
-<li>DevTools (F12) → Network tab</li>
-<li>Play any song</li>
-<li>Find request to <code>amp-api-edge.music.apple.com</code></li>
-<li>Copy the <code>Media-User-Token</code> request header value</li>
-</ol>
-</div>
+${tokenGuideCard}
 
 <div class=card>
 <div class=rbar><h2 style=margin:0>Network Activity</h2><div style=display:flex;gap:6px><button class=rbtn id=copy-netlogs onclick="copyLogs('netlogs')">Copy</button><button class=rbtn onclick=refresh()>↻</button></div></div>
@@ -611,5 +639,51 @@ ${if(has)"<form method=POST action=/clear-token><button class='btn btn-s' type=s
 </div>
 </body></html>"""
     }
+
+    /**
+     * The iOS half of the audience branch: install the Shortcut from this TV, set the TV
+     * address inside it, sign in to music.apple.com in Safari, run it from that page's share
+     * sheet. Chrome DevTools is deliberately absent — it does not exist on iOS. The three
+     * prerequisite names are verbatim from shortcut/README.md, because a user searching
+     * Settings matches on the exact label; the download is the TV-local artifact, which is
+     * what makes the install work with no internet.
+     */
+    private fun iosSignInCard() = """
+<div class=card>
+<h2>Sign in with the Shortcut (iOS)</h2>
+<div style="font-size:12px;color:#999;line-height:1.7;margin-bottom:10px">A signed Shortcut reads the token from your own signed-in Safari session — no iOS app and no developer account. Install it once, then run it from the share sheet whenever the token needs refreshing. The file below comes from this TV, so this is the offline install.</div>
+<a class="btn btn-p" style=text-decoration:none href=/send-token-to-tv.shortcut download>Download the Shortcut</a>
+<div style="font-size:12px;color:#999;line-height:1.9;margin-top:12px"><strong style=color:#ccc>Install and run</strong></div>
+<ol>
+<li>Open the downloaded file in <strong style=color:#ccc>Files</strong> and tap <strong style=color:#ccc>Add</strong>.</li>
+<li>Open the Shortcut's Text action and replace the TV address with <span style="font-family:monospace;color:#aaa">${serverUrl()}</span>.</li>
+<li>Sign in to <strong style=color:#ccc>music.apple.com</strong> in <strong style=color:#ccc>Safari</strong>.</li>
+<li>On that page tap <strong style=color:#ccc>Share</strong> → <strong style=color:#ccc>Send Token to TV</strong> and let it run. It reports whether the TV accepted the token.</li>
+</ol>
+<div style="font-size:12px;color:#999;line-height:1.9;margin-top:8px"><strong style=color:#ccc>Three prerequisites</strong>, once:</div>
+<ol>
+<li><strong style=color:#ccc>Allow Running Scripts</strong> — Settings → Shortcuts → Advanced → Allow Running Scripts = on.</li>
+<li><strong style=color:#ccc>Share-sheet availability</strong> — in the Shortcut's details, Show in Share Sheet = on for Safari web pages. Only Safari works; Chrome and Firefox do not hand the page over.</li>
+<li><strong style=color:#ccc>Local Network permission</strong> — the first run asks to find devices on your local network; tap Allow.</li>
+</ol>
+</div>
+"""
+
+    /**
+     * Replaces the DevTools guide on iOS, where it cannot be followed. Everything named here
+     * is a fallback this page already offers: the manual paste box, plus the failures an iOS
+     * user can act on without a computer.
+     */
+    private fun iosFallbackCard() = """
+<div class=card>
+<h2>If the Shortcut does not work</h2>
+<ol>
+<li><strong style=color:#ccc>Paste the token above</strong> — the Set Token box works in any browser and is the last resort for every path.</li>
+<li><strong style=color:#ccc>No token on the page</strong> — sign in at music.apple.com in Safari, then run the Shortcut from that page's share sheet.</li>
+<li><strong style=color:#ccc>TV unreachable</strong> — check that the phone and this TV are on the same network, and that the address inside the Shortcut matches the one at the top of this page.</li>
+<li><strong style=color:#ccc>Worked for months, then stopped</strong> — the token lasts roughly six months; sign in again and re-run the Shortcut.</li>
+</ol>
+</div>
+"""
 }
 
