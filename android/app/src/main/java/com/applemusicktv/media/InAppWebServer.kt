@@ -9,6 +9,7 @@ import com.applemusicktv.data.LyricsOffsetPreferences
 import com.applemusicktv.data.MutPreferences
 import com.applemusicktv.data.NetworkLog
 import com.applemusicktv.data.repository.MusicRepository
+import com.applemusicktv.util.FormBody
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import java.io.*
@@ -16,7 +17,6 @@ import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
-import java.net.URLDecoder
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
@@ -222,16 +222,16 @@ class InAppWebServer @Inject constructor(
                 // Top-level-navigation hand-off from the extraction script. The script runs inside
                 // Apple's HTTPS origin, where a fetch to a plain-HTTP LAN address is mixed-content
                 // blocked — only a full page navigation carries the token over (design: 2026-10-24).
-                method == "GET"  && path == "/set-token"   -> { applyToken(parseField(query, "mut")); send(out, 200, "text/html", tokenReceivedPage()) }
+                method == "GET"  && path == "/set-token"   -> { applyToken(FormBody.field(query, "mut")); send(out, 200, "text/html", tokenReceivedPage()) }
                 method == "POST" && path == "/clear-crash"        -> { com.applemusicktv.util.CrashReporter.clear(context); addLog("OK", "Crash log cleared"); redirect(out, "/") }
-                method == "POST" && path == "/set-token"          -> { applyToken(parseField(body, "mut")); redirect(out, "/") }
+                method == "POST" && path == "/set-token"          -> { applyToken(FormBody.field(body, "mut")); redirect(out, "/") }
                 method == "POST" && path == "/clear-token"         -> { prefs.setMUT(""); addLog("WARN","Token cleared"); redirect(out, "/") }
-                method == "POST" && path == "/set-lyrics-offset"   -> { applyLyricsOffset(parseField(body, "offset")); redirect(out, "/") }
-                method == "POST" && path == "/set-beat-latency"    -> { applyBeatLatency(parseField(body, "latency")); redirect(out, "/") }
-                method == "POST" && path == "/set-crossfade"       -> { applyCrossfade(parseField(body, "crossfade")); redirect(out, "/") }
-            method == "POST" && path == "/set-standalone"      -> { applyStandalone(parseField(body, "standalone")); redirect(out, "/") }
-            method == "POST" && path == "/set-server-ip"       -> { applyServerIp(parseField(body, "serverip")); redirect(out, "/") }
-                method == "POST" && path == "/set-volume-leveling" -> { applyVolumeLeveling(parseField(body, "vol")); redirect(out, "/") }
+                method == "POST" && path == "/set-lyrics-offset"   -> { applyLyricsOffset(FormBody.field(body, "offset")); redirect(out, "/") }
+                method == "POST" && path == "/set-beat-latency"    -> { applyBeatLatency(FormBody.field(body, "latency")); redirect(out, "/") }
+                method == "POST" && path == "/set-crossfade"       -> { applyCrossfade(FormBody.field(body, "crossfade")); redirect(out, "/") }
+            method == "POST" && path == "/set-standalone"      -> { applyStandalone(FormBody.field(body, "standalone")); redirect(out, "/") }
+            method == "POST" && path == "/set-server-ip"       -> { applyServerIp(FormBody.field(body, "serverip")); redirect(out, "/") }
+                method == "POST" && path == "/set-volume-leveling" -> { applyVolumeLeveling(FormBody.field(body, "vol")); redirect(out, "/") }
                 else -> send(out, 404, "text/plain", "Not found")
             }
             out.flush(); socket.close()
@@ -368,10 +368,6 @@ body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;paddi
             "Content-Disposition: attachment; filename=\"AMTVCompanion.apk\"\r\n\r\n"
         out.write(resp.toByteArray()); out.write(bytes)
     }
-
-    private fun parseField(body: String, field: String) =
-        body.split("&").find { it.startsWith("$field=") }?.removePrefix("$field=")
-            ?.replace("+", " ")?.let { URLDecoder.decode(it, "UTF-8") } ?: ""
 
     /** A single self-contained text dump for bug reports: environment + crash + logs. */
     private fun bugReport(): String {
