@@ -12,10 +12,17 @@ import org.junit.Test
  */
 class PageAudienceTest {
 
-    private data class Case(val label: String, val ua: String?, val expected: Audience)
+    private data class Case(
+        val label: String,
+        val ua: String?,
+        val expected: Audience,
+        val iosRequested: Boolean = false,
+    )
 
     @Test
     fun `maps the user agents that decide the sign-in branch`() {
+        val macintosh = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
         val cases = listOf(
             Case(
                 "iPhone Safari",
@@ -36,7 +43,7 @@ class PageAudienceTest {
                 "companion marked user agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
                     "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 AMTVCompanion/1.0",
-                Audience.Companion,
+                Audience.CompanionApp,
             ),
             Case(
                 "desktop browser",
@@ -45,17 +52,37 @@ class PageAudienceTest {
                 Audience.Other,
             ),
             Case(
-                // Documented limitation: an iPad in desktop mode sends a Macintosh UA with
-                // no iPad token. It gets the desktop instructions, which that UA can follow.
-                "iPad in desktop mode",
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 " +
-                    "(KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+                // An iPad in desktop mode sends the Macintosh UA, which is all the server
+                // sees. Without the page's hint it is indistinguishable from a real Mac and
+                // takes the desktop branch; the page redirects touch devices to /?ios=1.
+                "iPad in desktop mode without the hint",
+                macintosh,
                 Audience.Other,
+            ),
+            Case(
+                "iPad in desktop mode after the page's ios hint",
+                macintosh,
+                Audience.Ios,
+                iosRequested = true,
+            ),
+            Case(
+                "a real Mac without the hint",
+                macintosh,
+                Audience.Other,
+            ),
+            Case(
+                // The marker keeps priority even when the tab carries the hint, so the
+                // companion's automated flow never gives way to manual iOS steps.
+                "companion marker with the ios hint",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 AMTVCompanion/1.0",
+                Audience.CompanionApp,
+                iosRequested = true,
             ),
             Case("empty user agent", "", Audience.Other),
             Case("missing user agent", null, Audience.Other),
         )
-        for (c in cases) assertEquals(c.label, c.expected, PageAudience.of(c.ua))
+        for (c in cases) assertEquals(c.label, c.expected, PageAudience.of(c.ua, c.iosRequested))
     }
 
     @Test
@@ -65,6 +92,6 @@ class PageAudienceTest {
         // would show manual Shortcut steps where a one-tap button belongs.
         val ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) " +
             "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 AMTVCompanion/1.0"
-        assertEquals(Audience.Companion, PageAudience.of(ua))
+        assertEquals(Audience.CompanionApp, PageAudience.of(ua))
     }
 }

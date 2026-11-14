@@ -213,7 +213,11 @@ class InAppWebServer @Inject constructor(
                 val buf = CharArray(len); reader.read(buf, 0, len); body = String(buf)
             }
             when {
-                method == "GET"  && path == "/"            -> send(out, 200, "text/html", html(PageAudience.of(hdrs["user-agent"])))
+                // `?ios=1` is the page's own hint for an iPad whose default desktop-mode UA
+                // says Macintosh; the server cannot see the touchscreen behind that header.
+                method == "GET"  && path == "/"            -> send(out, 200, "text/html", html(
+                    PageAudience.of(hdrs["user-agent"], iosRequested = FormBody.field(query, "ios") == "1")
+                ))
                 method == "GET"  && path == "/status"      -> send(out, 200, "application/json", status())
                 method == "GET"  && path == "/logs"        -> send(out, 200, "application/json", logsJson())
                 method == "GET"  && path == "/stream"      -> { handleSse(socket, out); return }
@@ -221,15 +225,21 @@ class InAppWebServer @Inject constructor(
                 method == "GET"  && path == "/netlogs"     -> send(out, 200, "application/json", netLogsJson())
                 method == "GET"  && path == "/report"      -> send(out, 200, "text/plain", bugReport(), "Content-Disposition: attachment; filename=\"amtv-bugreport.txt\"\r\n")
                 method == "GET"  && path == "/companion.apk" -> sendAsset(
-                    out, "companion.apk", "application/vnd.android.package-archive",
-                    "AMTVCompanion.apk", "Companion APK is not bundled in this build",
+                    out = out,
+                    asset = "companion.apk",
+                    contentType = "application/vnd.android.package-archive",
+                    filename = "AMTVCompanion.apk",
+                    missing = "Companion APK is not bundled in this build",
                 )
                 // The signed iOS Shortcut, for an install that needs no internet. Its asset
                 // name is the ASCII copy the Gradle task writes; the download filename keeps
                 // the spaces because the file name becomes the Shortcut's name on import.
                 method == "GET"  && path == "/send-token-to-tv.shortcut" -> sendAsset(
-                    out, "send-token-to-tv.shortcut", "application/octet-stream",
-                    "Send Token to TV.shortcut", "The iOS Shortcut is not bundled in this build",
+                    out = out,
+                    asset = "send-token-to-tv.shortcut",
+                    contentType = "application/octet-stream",
+                    filename = "Send Token to TV.shortcut",
+                    missing = "The iOS Shortcut is not bundled in this build",
                 )
                 // Top-level-navigation hand-off from the extraction script. The script runs inside
                 // Apple's HTTPS origin, where a fetch to a plain-HTTP LAN address is mixed-content
@@ -421,6 +431,12 @@ body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;paddi
      * phone; every other browser keeps the two-method card and the DevTools guide. The manual
      * paste box below stays on every branch, as the fallback for when every automated path
      * fails.
+     *
+     * An iPad in default desktop mode sends a Macintosh UA and arrives here as Other. Its
+     * touchscreen is invisible in the header, so the Other branch carries a small script
+     * that redirects a touch-capable Macintosh client once to `/?ios=1`; that request
+     * reaches the iOS branch. The script is not emitted on the other branches, so there is
+     * no redirect loop.
      */
     private fun html(audience: PageAudience.Audience): String {
         val has = prefs.hasMUT()
@@ -442,7 +458,7 @@ body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;paddi
             "<div class=$cls>${log.replace("<","&lt;")}</div>"
         }.ifEmpty { "<div class=d>No requests yet.</div>" }
         val signInCard = when (audience) {
-            PageAudience.Audience.Companion -> """
+            PageAudience.Audience.CompanionApp -> """
 <div class=card>
 <h2>Sign in to Apple Music</h2>
 <div style="font-size:12px;color:#999;line-height:1.7;margin-bottom:10px">Sign in with your Apple ID (password and 2FA are painless here). Once you're signed in, the app sends the token to the TV on its own and reloads this page — then just go back to the TV.</div>
@@ -472,6 +488,17 @@ body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;paddi
 </ol>
 </div>
 """
+        // Default iPadOS Safari sends a Macintosh UA, so the server cannot tell it from a
+        // real Mac; only the page sees the touchscreen. Emitted on the Other branch alone,
+        // and a redirected load carries ios=1, so the redirect cannot loop.
+        val ipadDesktopRedirect = if (audience == PageAudience.Audience.Other) """
+// iPadOS in desktop mode sends a Macintosh UA, so the server cannot tell it from a Mac.
+// A touch screen reports more than one touch point: redirect once to the iOS branch.
+if (navigator.maxTouchPoints > 1 && navigator.userAgent.indexOf('Macintosh') !== -1 &&
+    new URLSearchParams(location.search).get('ios') !== '1') {
+  location.replace('/?ios=1');
+}
+""" else ""
         return """<!DOCTYPE html><html lang=en><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1">
 <title>Apple Music TV</title><style>
 *{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;padding:20px;max-width:620px;margin:auto}
@@ -497,6 +524,7 @@ ol{font-size:12px;color:#666;line-height:2.4;padding-left:18px}code{color:#fa233
 .rbtn:active{color:#aaa}
 </style>
 <script>
+$ipadDesktopRedirect
 function refresh(){
   fetch('/status').then(r=>r.json()).then(s=>{
     const el=document.getElementById('status');

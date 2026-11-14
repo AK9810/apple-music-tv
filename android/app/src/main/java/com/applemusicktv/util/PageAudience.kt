@@ -8,26 +8,29 @@ package com.applemusicktv.util
  * and wins: its WebView sends a desktop Chrome UA plus the marker, and it drives the
  * automated sign-in, so it must never be mistaken for "some other browser".
  *
- * The mapping deliberately recognises only the mobile iOS tokens (`iPhone`, `iPad`). An
- * iPad with "Request Desktop Website" on sends a Macintosh UA with no iPad token and maps
- * to [Audience.Other] — the same instructions a Mac user gets, including the DevTools route,
- * which that UA can actually follow on the iPad (Safari's Web Inspector over a Mac). A Mac
- * heuristic here would instead send real desktops to the iOS branch, the worse mistake.
+ * The mapping recognises the mobile iOS tokens (`iPhone`, `iPad`). Default iPadOS Safari
+ * sends a `Macintosh` UA, and the server sees only that header — it cannot tell the tablet
+ * from a real Mac. The touchscreen is visible only inside the page, so the page checks
+ * `navigator.maxTouchPoints` and reloads once as `/?ios=1`; [iosRequested] carries that
+ * hint here. It is checked after the marker and before the UA, which keeps a real Mac (no
+ * touch points, never redirected) on the desktop branch.
  */
 object PageAudience {
 
-    enum class Audience { Companion, Ios, Other }
+    enum class Audience { CompanionApp, Ios, Other }
 
     private const val COMPANION_MARKER = "AMTVCompanion"
 
     /**
      * [userAgent] is the raw `User-Agent` header; null or empty means a client that did not
      * send one, which gets the instructions every fallback still supports ([Audience.Other]).
+     * [iosRequested] is the page's `/?ios=1` hint, which only an iPad in desktop mode sends.
      */
-    fun of(userAgent: String?): Audience {
+    fun of(userAgent: String?, iosRequested: Boolean = false): Audience {
         val ua = userAgent.orEmpty()
         return when {
-            ua.contains(COMPANION_MARKER) -> Audience.Companion
+            ua.contains(COMPANION_MARKER) -> Audience.CompanionApp
+            iosRequested -> Audience.Ios
             ua.contains("iPhone") || ua.contains("iPad") -> Audience.Ios
             else -> Audience.Other
         }
