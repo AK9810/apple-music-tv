@@ -15,7 +15,7 @@ The TV side already exists and is unchanged: `POST /set-token` with a form field
 | Path | What it is |
 | --- | --- |
 | `source/Send Token to TV.shortcut` | The unsigned source, exactly what gets signed. Normally an export from the Shortcuts app; the current file is the generated scaffold recorded in [`VERIFICATION.md`](VERIFICATION.md). |
-| `Send Token to TV.shortcut` | The signed artifact (AEA1 container). What a phone imports; the TV will serve it once [#14](https://github.com/AK9810/apple-music-tv/issues/14) lands. |
+| `Send Token to TV.shortcut` | The signed artifact (AEA1 container). What a phone imports; the TV serves it at `/send-token-to-tv.shortcut`, and the page's iOS path uses that as the offline install. |
 | `sign.sh` | Signs the source and checks the AEA1 header. |
 | `VERIFICATION.md` | The on-device run that justifies shipping the artifact. |
 
