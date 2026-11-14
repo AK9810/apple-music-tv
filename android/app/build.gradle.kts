@@ -100,10 +100,21 @@ val copyCompanionApk = tasks.register<Copy>("copyCompanionApk") {
 // an offline install with no internet and no GitHub round-trip. The tracked artifact keeps
 // its human name (spaces included, it names the Shortcut on import); only the asset copy is
 // renamed to pure ASCII, and the route path ends in .shortcut so Safari/Files recognise it.
+val shortcutSource = File(rootDir, "../shortcut/Send Token to TV.shortcut").normalize()
+// A Copy from a missing file is a silent no-op: Gradle marks it NO-SOURCE, which skips
+// even doFirst. So the existence check is its own task — no outputs, so it always runs.
+val checkShortcut = tasks.register("checkShortcut") {
+    doFirst {
+        check(shortcutSource.isFile) {
+            "Missing ${shortcutSource.path} — run ./shortcut/sign.sh to build the signed Shortcut."
+        }
+    }
+}
 val copyShortcut = tasks.register<Copy>("copyShortcut") {
-    from(File(rootDir, "../shortcut/Send Token to TV.shortcut"))
+    from(shortcutSource)
     into(layout.buildDirectory.dir("shortcut-asset"))
     rename { "send-token-to-tv.shortcut" }
+    dependsOn(checkShortcut)
 }
 tasks.matching { it.name == "mergeDebugAssets" || it.name == "mergeReleaseAssets" }.configureEach {
     dependsOn(copyCompanionApk)
