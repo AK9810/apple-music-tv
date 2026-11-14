@@ -409,9 +409,9 @@
     <string name="signin_tab_ios">iOS · iPadOS</string>
     <string name="signin_browser_note">用手机打开这个地址，在页面里粘贴 Music-User-Token，此屏会自动继续。</string>
     <string name="signin_companion_note">在同一 Wi-Fi 的安卓手机上安装伴侣 App（扫二维码下载），输入上方地址并登录 Apple Music，Token 会自动回传。</string>
-    <string name="signin_ios_note">扫码打开安装页并添加快捷指令；然后在 Safari 登录 music.apple.com，从分享面板运行它。</string>
+    <string name="signin_ios_note">扫码打开页面，从电视下载快捷指令并添加；然后在 Safari 登录 music.apple.com，从分享面板运行它。</string>
     <string name="signin_qr_page">扫码打开粘贴页</string>
     <string name="signin_qr_apk">扫码下载伴侣 App</string>
-    <string name="signin_qr_ios">扫码打开 iOS 安装页</string>
+    <string name="signin_qr_ios">扫码打开 iOS 设置页</string>
 
 </resources>

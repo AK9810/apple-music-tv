@@ -413,9 +413,9 @@
     <string name="signin_tab_ios">iOS · iPadOS</string>
     <string name="signin_browser_note">Open this address on your phone, paste your Music-User-Token there, and this screen continues by itself.</string>
     <string name="signin_companion_note">Install the companion app on an Android phone on the same Wi-Fi (scan the code), enter the address above and sign in to Apple Music — the token is sent back automatically.</string>
-    <string name="signin_ios_note">Scan to open the install page and add the Shortcut; then sign in to music.apple.com in Safari and run it from the share sheet.</string>
+    <string name="signin_ios_note">Scan to open the page, download the Shortcut from the TV and add it; then sign in to music.apple.com in Safari and run it from the share sheet.</string>
     <string name="signin_qr_page">Scan — open the paste page</string>
     <string name="signin_qr_apk">Scan — download the companion app</string>
-    <string name="signin_qr_ios">Scan — open the iOS install page</string>
+    <string name="signin_qr_ios">Scan — open the iOS setup page</string>
 
 </resources>
