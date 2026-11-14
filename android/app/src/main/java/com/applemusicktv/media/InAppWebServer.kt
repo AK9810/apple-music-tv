@@ -11,6 +11,7 @@ import com.applemusicktv.data.NetworkLog
 import com.applemusicktv.data.repository.MusicRepository
 import com.applemusicktv.util.FormBody
 import com.applemusicktv.util.PageAudience
+import com.applemusicktv.util.ShortcutDistribution
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import java.io.*
@@ -641,21 +642,30 @@ ${tokenGuideCard}
     }
 
     /**
-     * The iOS half of the audience branch: install the Shortcut from this TV, set the TV
-     * address inside it, sign in to music.apple.com in Safari, run it from that page's share
-     * sheet. Chrome DevTools is deliberately absent — it does not exist on iOS. The three
-     * prerequisite names are verbatim from shortcut/README.md, because a user searching
-     * Settings matches on the exact label; the download is the TV-local artifact, which is
-     * what makes the install work with no internet.
+     * The iOS half of the audience branch: install the Shortcut, set the TV address inside
+     * it, sign in to music.apple.com in Safari, run it from that page's share sheet. Chrome
+     * DevTools is deliberately absent — it does not exist on iOS.
+     *
+     * The one-tap import is the primary action. iOS refuses `http://` import targets, so it
+     * points at the https copy of the signed artifact ([ShortcutDistribution]); the TV-local
+     * `/send-token-to-tv.shortcut` download below it serves the identical bytes and is the
+     * offline path. iOS always ends the one-tap flow with its own **Add** confirmation, which
+     * this page cannot skip — saying so avoids a user thinking the install failed.
+     *
+     * The three prerequisite names are verbatim from shortcut/README.md, because a user
+     * searching Settings matches on the exact label.
      */
     private fun iosSignInCard() = """
 <div class=card>
 <h2>Sign in with the Shortcut (iOS)</h2>
-<div style="font-size:12px;color:#999;line-height:1.7;margin-bottom:10px">A signed Shortcut reads the token from your own signed-in Safari session — no iOS app and no developer account. Install it once, then run it from the share sheet whenever the token needs refreshing. The file below comes from this TV, so this is the offline install.</div>
-<a class="btn btn-p" style=text-decoration:none href=/send-token-to-tv.shortcut download>Download the Shortcut</a>
-<div style="font-size:12px;color:#999;line-height:1.9;margin-top:12px"><strong style=color:#ccc>Install and run</strong></div>
+<div style="font-size:12px;color:#999;line-height:1.7;margin-bottom:10px">A signed Shortcut reads the token from your own signed-in Safari session — no iOS app and no developer account. Install it once, then run it from the share sheet whenever the token needs refreshing.</div>
+<a class="btn btn-p" style=text-decoration:none href="${ShortcutDistribution.importDeepLinkHtml()}">Install the Shortcut</a>
+<div style="font-size:11px;color:#888;line-height:1.6;margin-top:8px">This opens the install preview in the Shortcuts app. iOS still asks you to tap <strong style=color:#ccc>Add</strong> to finish — that confirmation cannot be skipped.</div>
+<div style="font-size:12px;color:#999;line-height:1.9;margin-top:16px"><strong style=color:#ccc>Offline path</strong> — if the phone cannot reach the internet during setup, download the identical signed file from this TV instead:</div>
+<a class="btn btn-s" style=text-decoration:none href=/send-token-to-tv.shortcut download>Download the Shortcut from this TV</a>
+<div style="font-size:11px;color:#888;line-height:1.6;margin-top:8px">Same artifact as the one-tap install: open the file in <strong style=color:#ccc>Files</strong> and tap <strong style=color:#ccc>Add</strong>.</div>
+<div style="font-size:12px;color:#999;line-height:1.9;margin-top:16px"><strong style=color:#ccc>After it is added</strong></div>
 <ol>
-<li>Open the downloaded file in <strong style=color:#ccc>Files</strong> and tap <strong style=color:#ccc>Add</strong>.</li>
 <li>Open the Shortcut's Text action and replace the TV address with <span style="font-family:monospace;color:#aaa">${serverUrl()}</span>.</li>
 <li>Sign in to <strong style=color:#ccc>music.apple.com</strong> in <strong style=color:#ccc>Safari</strong>.</li>
 <li>On that page tap <strong style=color:#ccc>Share</strong> → <strong style=color:#ccc>Send Token to TV</strong> and let it run. It reports whether the TV accepted the token.</li>
