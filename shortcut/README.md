@@ -47,9 +47,15 @@ release instead of a new release: a new non-prerelease would take over
 `/releases/latest` (breaking the APK badge and the stable updater), and a new
 prerelease without an `.apk` would become the beta channel's first result.
 
-The asset name is hyphenated (`Send-Token-to-TV.shortcut`) so the URL is stable;
-the imported shortcut keeps its spaced name because the import link passes
-`&name=Send%20Token%20to%20TV`. The file name, not the workflow, is the name.
+The URL is pinned to the **v1.7** tag on purpose: that tag fixes this exact
+verified artifact, and the URL stays valid for as long as v1.7 exists. The asset
+name is hyphenated (`Send-Token-to-TV.shortcut`), but the tag and the immutable
+asset are what keep the link stable, not the naming convention. The local file's
+name, `Send Token to TV.shortcut`, is the name the Shortcut takes when imported
+from Files; the one-tap link passes `&name=Send%20Token%20to%20TV` to title it
+with spaces. That URL-import path is still device-unverified: the record in
+[`VERIFICATION.md`](VERIFICATION.md) covers importing the file from Files, not
+the one-tap link.
 
 To re-publish after a rebuild (only after `./sign.sh` and fresh real-device
 checks in [`VERIFICATION.md`](VERIFICATION.md)):

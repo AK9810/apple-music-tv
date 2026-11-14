@@ -41,8 +41,11 @@ https 副本挂在现有稳定版 **v1.7** 的 release 上，`sha256` 为
 `/releases/latest`（APK 徽章和稳定版更新都会受影响），而没有 `.apk` 的新预发布版
 会成为 beta 通道的第一个结果。
 
-资产名用连字符（`Send-Token-to-TV.shortcut`），保证 URL 稳定；导入后的快捷指令名仍然带空格，
-因为导入链接传了 `&name=Send%20Token%20to%20TV`。名字来自文件名，不来自工作流。
+URL 固定在 **v1.7** 这个 tag 上，目的就是锁定这一份已验证的产物：只要 v1.7 还在，链接就一直有效。
+资产名用连字符（`Send-Token-to-TV.shortcut`），但让链接稳定的是 tag 和不可变的资产，不是命名规则。
+电视本地文件的名字 `Send Token to TV.shortcut` 是「文件」导入后快捷指令的名称；一键链接传入
+`&name=Send%20Token%20to%20TV`，让导入的快捷指令名带空格。这条 URL 导入路径还没有在真机上验证：
+[`VERIFICATION.md`](VERIFICATION.md) 记录的是从「文件」导入，不是一键链接。
 
 重建后重新发布（只在 `./sign.sh` 和 [`VERIFICATION.md`](VERIFICATION.md) 的真机检查
 都完成之后）：
