@@ -15,13 +15,56 @@ The TV side already exists and is unchanged: `POST /set-token` with a form field
 | Path | What it is |
 | --- | --- |
 | `source/Send Token to TV.shortcut` | The unsigned source, exactly what gets signed. Normally an export from the Shortcuts app; the current file is the generated scaffold recorded in [`VERIFICATION.md`](VERIFICATION.md). |
-| `Send Token to TV.shortcut` | The signed artifact (AEA1 container). What a phone imports; the TV serves it at `/send-token-to-tv.shortcut`, and the page's iOS path uses that as the offline install. |
+| `Send Token to TV.shortcut` | The signed artifact (AEA1 container). What a phone imports. Published twice with identical bytes: the https release asset behind the page's one-tap **Install** button, and the TV-served offline fallback at `/send-token-to-tv.shortcut`. |
 | `sign.sh` | Signs the source and checks the AEA1 header. |
 | `VERIFICATION.md` | The on-device run that justifies shipping the artifact. |
 
 The signed file differs from the source only by the AEA1 wrapper and signature.
 Neither contains a secret: the only per-user value is the TV address, and that is
 an editable action.
+
+## Distribution
+
+iOS refuses `http://` targets for `shortcuts://import-shortcut` and accepts the
+signed file only over https, so the shipped artifact is published twice. It is
+the same file in both places, not a second build:
+
+| Copy | URL | Role |
+| --- | --- | --- |
+| https release asset | `https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-Token-to-TV.shortcut` | Primary: the page's **Install the Shortcut** button, via `shortcuts://import-shortcut?url=…&name=Send%20Token%20to%20TV`. |
+| TV-local file | `http://TV:8080/send-token-to-tv.shortcut` | Offline fallback: download, open in Files, Add. Needs no internet. |
+
+The https copy is the asset attached to the existing stable release **v1.7**.
+Its `sha256` is
+`e8dfba9ddf2b5e8dcc5df1ec82ed74500bb00808783dfa0161288c8763814fd8`,
+the same bytes the TV serves. It is deliberately attached to an existing stable
+release instead of a new release: a new non-prerelease would take over
+`/releases/latest` (breaking the APK badge and the stable updater), and a new
+prerelease without an `.apk` would become the beta channel's first result.
+
+The asset name is hyphenated (`Send-Token-to-TV.shortcut`) so the URL is stable;
+the imported shortcut keeps its spaced name because the import link passes
+`&name=Send%20Token%20to%20TV`. The file name, not the workflow, is the name.
+
+To re-publish after a rebuild (only after `./sign.sh` and fresh real-device
+checks in [`VERIFICATION.md`](VERIFICATION.md)):
+
+```bash
+cp "shortcut/Send Token to TV.shortcut" /tmp/Send-Token-to-TV.shortcut
+gh release upload v1.7 /tmp/Send-Token-to-TV.shortcut --clobber
+curl -sL https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-Token-to-TV.shortcut | shasum -a 256
+```
+
+The `cp` renames the file to the release asset name; upload it under that name so
+the published URL does not change. `--clobber` replaces the existing asset in
+place. The final `shasum` must match the `Signed sha256` in
+[`VERIFICATION.md`](VERIFICATION.md) and the artifact in this directory.
+
+Neither copy contains a secret. The only per-user value is the TV address in the
+editable **Text** action; the signature gates import, not later edits, so the
+address stays editable after import. On the phone, the one-tap link opens the
+install preview and iOS still asks for a final **Add** confirmation — that tap
+cannot be skipped.
 
 ## Who does what
 

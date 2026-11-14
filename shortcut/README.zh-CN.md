@@ -15,12 +15,48 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 | 路径 | 是什么 |
 | --- | --- |
 | `source/Send Token to TV.shortcut` | 未签名源文件，就是被签名的那份。正常情况下是从「快捷指令」app 导出的文件；当前这份是生成的脚手架，来源记录在 [`VERIFICATION.md`](VERIFICATION.md)。 |
-| `Send Token to TV.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它；电视在 `/send-token-to-tv.shortcut` 提供下载，页面的 iOS 路径用它作为离线安装方式。 |
+| `Send Token to TV.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它。同一份字节发布在两处：页面一键 **Install** 按钮用的 https release 资产，以及电视在 `/send-token-to-tv.shortcut` 提供的离线兜底。 |
 | `sign.sh` | 给 source 签名，并校验 AEA1 文件头。 |
 | `VERIFICATION.md` | 支撑这个产物可以发布的真机验证记录。 |
 
 签名文件与 source 的差别只有 AEA1 外壳和签名。两者都不含机密：唯一因用户而异的是电视地址，
 而它是一个可编辑的动作。
+
+## 分发
+
+iOS 不接受 `shortcuts://import-shortcut` 使用 `http://` 目标，只接受 https 上的签名文件，
+所以同一个产物发布在两处 —— 是同一份文件，不是两份构建：
+
+| 副本 | URL | 用途 |
+| --- | --- | --- |
+| https 发布产物 | `https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-Token-to-TV.shortcut` | 主路径：页面上的 **Install the Shortcut** 按钮，经 `shortcuts://import-shortcut?url=…&name=Send%20Token%20to%20TV`。 |
+| 电视本地文件 | `http://TV:8080/send-token-to-tv.shortcut` | 离线兜底：下载后用「文件」打开并点 Add。不需要互联网。 |
+
+https 副本挂在现有稳定版 **v1.7** 的 release 上，`sha256` 为
+`e8dfba9ddf2b5e8dcc5df1ec82ed74500bb00808783dfa0161288c8763814fd8`，
+与电视提供的是同一份字节。故意挂在现有稳定版、不新建 release：新的正式版会接管
+`/releases/latest`（APK 徽章和稳定版更新都会受影响），而没有 `.apk` 的新预发布版
+会成为 beta 通道的第一个结果。
+
+资产名用连字符（`Send-Token-to-TV.shortcut`），保证 URL 稳定；导入后的快捷指令名仍然带空格，
+因为导入链接传了 `&name=Send%20Token%20to%20TV`。名字来自文件名，不来自工作流。
+
+重建后重新发布（只在 `./sign.sh` 和 [`VERIFICATION.md`](VERIFICATION.md) 的真机检查
+都完成之后）：
+
+```bash
+cp "shortcut/Send Token to TV.shortcut" /tmp/Send-Token-to-TV.shortcut
+gh release upload v1.7 /tmp/Send-Token-to-TV.shortcut --clobber
+curl -sL https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-Token-to-TV.shortcut | shasum -a 256
+```
+
+`cp` 这一步把文件改成 release 资产名；用这个文件名上传，已发布的 URL 才不变。
+`--clobber` 原位替换现有资产。最后的 `shasum` 必须与 [`VERIFICATION.md`](VERIFICATION.md)
+里的 `Signed sha256` 以及本目录的产物一致。
+
+两份副本都不含机密。唯一因用户而异的是可编辑的 **Text** 动作里的电视地址；签名约束的是导入，
+不是导入后的修改，所以导入后地址仍可编辑。手机上，一键链接会打开安装预览，iOS 最后仍会要求
+点一次 **Add** —— 这一步无法跳过。
 
 ## 分工
 
