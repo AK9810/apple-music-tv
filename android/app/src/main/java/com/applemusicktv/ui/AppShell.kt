@@ -315,6 +315,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                     playerVm = playerVm,
                     vm = homeVm,
                     resetTick = homeResetTick,
+                    onResetConsumed = { homeResetTick = 0 },
                     onAlbumClick = { navController.navigate(Screen.AlbumDetail.route(it)) },
                     onPlaylistClick = { id, name, artworkUrl ->
                         navController.navigate(Screen.PlaylistDetail.route(id, name, artworkUrl))

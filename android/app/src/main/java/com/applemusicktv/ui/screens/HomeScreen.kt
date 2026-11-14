@@ -34,15 +34,21 @@ fun HomeScreen(
     vm: HomeViewModel = hiltViewModel(),
     // Bumped when setup finishes. The nav host may hand this route back its saved
     // scroll position, and finishing setup must always start at the first row
-    // instead of wherever the user happened to be before the replay.
+    // instead of wherever the user happened to be before the replay. Consumed once,
+    // so a later return to Home (tab switch, back from a detail page) keeps its
+    // position instead of snapping to the top again.
     resetTick: Int = 0,
+    onResetConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val state by vm.state.collectAsState()
     val lowPower = playerVm.state.collectAsState().value.lowPowerMode
     val listState = rememberLazyListState()
     LaunchedEffect(resetTick) {
-        if (resetTick > 0) listState.scrollToItem(0)
+        if (resetTick > 0) {
+            listState.scrollToItem(0)
+            onResetConsumed()
+        }
     }
 
     if (state.isLoading && state.sections.isEmpty()) {
