@@ -94,4 +94,27 @@ class PageAudienceTest {
             "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 AMTVCompanion/1.0"
         assertEquals(Audience.CompanionApp, PageAudience.of(ua))
     }
+
+    @Test
+    fun `desktop detection drives the QRs on the control page`() {
+        // The page only renders "scan this" QRs for a desktop browser; a phone or tablet
+        // already holds the device that would do the scanning.
+        val iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) " +
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+        val ipad = "Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 " +
+            "(KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+        val android = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+        val desktop = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+        val companion = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 AMTVCompanion/1.0"
+
+        assertEquals(true, PageAudience.isMobileBrowser(iphone))
+        assertEquals(true, PageAudience.isMobileBrowser(ipad))
+        assertEquals(true, PageAudience.isMobileBrowser(android))
+        assertEquals(false, PageAudience.isMobileBrowser(desktop))
+        assertEquals(false, PageAudience.isMobileBrowser(companion))
+        assertEquals(false, PageAudience.isMobileBrowser(null))
+    }
 }

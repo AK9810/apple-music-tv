@@ -35,4 +35,15 @@ object PageAudience {
             else -> Audience.Other
         }
     }
+
+    /**
+     * Whether the request comes from a phone or tablet rather than a desktop. Only used to
+     * decide if the control page should render "scan this" QRs: the client is already on the
+     * device that would do the scanning, so a QR there is noise.
+     */
+    fun isMobileBrowser(userAgent: String?): Boolean {
+        val ua = userAgent.orEmpty()
+        return ua.contains("Android") || ua.contains("Mobile") ||
+            ua.contains("iPhone") || ua.contains("iPad")
+    }
 }

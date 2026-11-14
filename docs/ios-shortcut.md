@@ -8,8 +8,10 @@ from your own signed-in Safari session on `music.apple.com` and hands it to the 
 over the local network. There is no iOS app, no Xcode and no developer account —
 why this route was chosen is in
 [ADR-0002](adr/0002-ios-shortcut-instead-of-an-app.md). This guide takes a fresh
-iPhone or iPad to a playing library song. The TV's port-8080 setup page itself is
-in English, and this guide quotes its labels exactly.
+iPhone or iPad to a playing library song. The TV's port-8080 setup page is
+bilingual (English / 简体中文): the switch is at the top right, or add
+`?lang=zh` to the URL. This guide quotes the English labels exactly; the Chinese
+labels appear in brackets where a step names one.
 
 ## Before you start: the three prerequisites
 
@@ -38,8 +40,8 @@ a normal prompt, not a prerequisite.
 ### One tap from the TV page
 
 1. On the phone, open `http://<TV_IP>:8080` — the address is shown on the TV's
-   sign-in screen.
-2. In the **Sign in with the Shortcut (iOS)** card, tap **Install the Shortcut**.
+   sign-in screen. The page opens on its **iOS Shortcut** tab by itself.
+2. In that tab, tap **Install the Shortcut**.
    The link opens the Shortcuts import preview directly.
 3. Tap **Add** to finish. iOS always asks for this confirmation and the page
    cannot skip it: if you see the preview, the install has not failed, it is just
@@ -53,7 +55,7 @@ points at the https release asset. It is the same signed file the TV serves.
 If the phone cannot reach the internet during setup, the TV can still deliver the
 file:
 
-1. On the same setup page, tap **Download the Shortcut from this TV**.
+1. In the same **iOS Shortcut** tab, tap **Download the Shortcut from this TV**.
 2. Open the downloaded `Send Token to TV.shortcut` in **Files**. (The link's path
    is hyphenated, `/send-token-to-tv.shortcut`; the saved file keeps the spaces in
    its name, which is what names the Shortcut on import.)
@@ -86,7 +88,8 @@ Shortcut.
 ## What success looks like
 
 - The notification says `Token received — the TV can now play your library.`
-- The TV setup page's Status card turns green and reads `Music-User-Token active`.
+- The status row at the top of the TV setup page turns green and reads
+  `Music-User-Token active`.
 - The TV's **Library** fills with your songs, albums and playlists.
 - A library song plays in full, not a 30-second preview.
 
@@ -116,10 +119,12 @@ signal.
 
 ### Paste the token on the TV page
 
-Open `http://<TV_IP>:8080`, find the **Set Token** card, paste the token into the
-box and tap **Save Token**. The form POSTs to `/set-token` and the TV redirects
-back to `/`, where the Status card turns green and reads `Music-User-Token
-active`. The value to paste is the `media-user-token` cookie; the desktop steps in
+Open `http://<TV_IP>:8080`, pick the **Sign in** tab (中文：**登录**) and use its
+**Set Token** card: paste the token into the box and tap **Save Token**. The form
+POSTs to `/set-token`; the TV redirects to `/?tab=1&saved=1`, which lands back on
+that tab with a green banner, and the status row above the tabs turns green and
+reads `Music-User-Token active`. The value to paste is the `media-user-token`
+cookie; the desktop steps in
 [TECHNICAL.md](TECHNICAL.md#getting-your-music-user-token) or the Mac walkthrough
 below show how to copy it.
 
@@ -136,8 +141,9 @@ With a Mac available:
 5. Select `media-user-token` and copy its value.
 6. Paste it into the TV page's **Set Token** card and tap **Save Token**.
 
-The **Set Token** card is on every version of the setup page, including the iOS
-one, so manual paste is always available.
+The **Sign in** tab is the page's default for desktop browsers, and its paste box
+is the fallback for every method — it stays reachable whichever tab a visitor
+starts on.
 
 ## Security
 

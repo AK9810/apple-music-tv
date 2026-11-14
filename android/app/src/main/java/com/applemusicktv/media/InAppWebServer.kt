@@ -11,6 +11,8 @@ import com.applemusicktv.data.NetworkLog
 import com.applemusicktv.data.repository.MusicRepository
 import com.applemusicktv.util.FormBody
 import com.applemusicktv.util.PageAudience
+import com.applemusicktv.util.PageLang
+import com.applemusicktv.util.QrCode
 import com.applemusicktv.util.ShortcutDistribution
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
@@ -216,7 +218,12 @@ class InAppWebServer @Inject constructor(
                 // `?ios=1` is the page's own hint for an iPad whose default desktop-mode UA
                 // says Macintosh; the server cannot see the touchscreen behind that header.
                 method == "GET"  && path == "/"            -> send(out, 200, "text/html", html(
-                    PageAudience.of(hdrs["user-agent"], iosRequested = FormBody.field(query, "ios") == "1")
+                    audience = PageAudience.of(hdrs["user-agent"], iosRequested = FormBody.field(query, "ios") == "1"),
+                    lang = PageLang.resolve(FormBody.field(query, "lang"), hdrs["accept-language"]),
+                    tabParam = FormBody.field(query, "tab").toIntOrNull()?.takeIf { it in 1..4 },
+                    saved = FormBody.field(query, "saved") == "1",
+                    rejected = FormBody.field(query, "error") == "1",
+                    mobile = PageAudience.isMobileBrowser(hdrs["user-agent"]),
                 ))
                 method == "GET"  && path == "/status"      -> send(out, 200, "application/json", status())
                 method == "GET"  && path == "/logs"        -> send(out, 200, "application/json", logsJson())
@@ -244,16 +251,28 @@ class InAppWebServer @Inject constructor(
                 // Top-level-navigation hand-off from the extraction script. The script runs inside
                 // Apple's HTTPS origin, where a fetch to a plain-HTTP LAN address is mixed-content
                 // blocked — only a full page navigation carries the token over (design: 2026-10-24).
-                method == "GET"  && path == "/set-token"   -> { applyToken(FormBody.field(query, "mut")); send(out, 200, "text/html", tokenReceivedPage()) }
-                method == "POST" && path == "/clear-crash"        -> { com.applemusicktv.util.CrashReporter.clear(context); addLog("OK", "Crash log cleared"); redirect(out, "/") }
-                method == "POST" && path == "/set-token"          -> { applyToken(FormBody.field(body, "mut")); redirect(out, "/") }
-                method == "POST" && path == "/clear-token"         -> { prefs.setMUT(""); addLog("WARN","Token cleared"); redirect(out, "/") }
-                method == "POST" && path == "/set-lyrics-offset"   -> { applyLyricsOffset(FormBody.field(body, "offset")); redirect(out, "/") }
-                method == "POST" && path == "/set-beat-latency"    -> { applyBeatLatency(FormBody.field(body, "latency")); redirect(out, "/") }
-                method == "POST" && path == "/set-crossfade"       -> { applyCrossfade(FormBody.field(body, "crossfade")); redirect(out, "/") }
-            method == "POST" && path == "/set-standalone"      -> { applyStandalone(FormBody.field(body, "standalone")); redirect(out, "/") }
-            method == "POST" && path == "/set-server-ip"       -> { applyServerIp(FormBody.field(body, "serverip")); redirect(out, "/") }
-                method == "POST" && path == "/set-volume-leveling" -> { applyVolumeLeveling(FormBody.field(body, "vol")); redirect(out, "/") }
+                // One landing for every hand-off (form POST, companion GET, Shortcut POST):
+                // the sign-in tab with a banner. A phone that navigates here mid-flow would
+                // otherwise lose the confirmation — and on iOS the default tab is not the
+                // sign-in one, so the redirect has to say `tab=1` explicitly.
+                method == "GET"  && path == "/set-token"   -> {
+                    val ok = applyToken(FormBody.field(query, "mut"))
+                    redirect(out, if (ok) "/?tab=1&saved=1" else "/?tab=1&error=1")
+                }
+                method == "POST" && path == "/clear-crash"        -> { com.applemusicktv.util.CrashReporter.clear(context); addLog("OK", "Crash log cleared"); redirect(out, "/?tab=4") }
+                method == "POST" && path == "/set-token"          -> {
+                    val ok = applyToken(FormBody.field(body, "mut"))
+                    redirect(out, if (ok) "/?tab=1&saved=1" else "/?tab=1&error=1")
+                }
+                method == "POST" && path == "/clear-token"         -> { prefs.setMUT(""); addLog("WARN","Token cleared"); redirect(out, "/?tab=1") }
+                // Settings forms land back on their own tab: they are edited in a row, and a
+                // redirect to "/" would drop the user on the sign-in tab after every save.
+                method == "POST" && path == "/set-lyrics-offset"   -> { applyLyricsOffset(FormBody.field(body, "offset")); redirect(out, "/?tab=4") }
+                method == "POST" && path == "/set-beat-latency"    -> { applyBeatLatency(FormBody.field(body, "latency")); redirect(out, "/?tab=4") }
+                method == "POST" && path == "/set-crossfade"       -> { applyCrossfade(FormBody.field(body, "crossfade")); redirect(out, "/?tab=4") }
+                method == "POST" && path == "/set-standalone"      -> { applyStandalone(FormBody.field(body, "standalone")); redirect(out, "/?tab=4") }
+                method == "POST" && path == "/set-server-ip"       -> { applyServerIp(FormBody.field(body, "serverip")); redirect(out, "/?tab=4") }
+                method == "POST" && path == "/set-volume-leveling" -> { applyVolumeLeveling(FormBody.field(body, "vol")); redirect(out, "/?tab=4") }
                 else -> send(out, 404, "text/plain", "Not found")
             }
             out.flush(); socket.close()
@@ -305,31 +324,15 @@ class InAppWebServer @Inject constructor(
         addLog("OK", "Lyrics offset set to ${ms}ms")
     }
 
-    private fun applyToken(mut: String) {
-        if (mut.length < 20) { addLog("ERROR", "Token too short"); return }
+    /** Stores the token and mirrors it to the proxy server; false means nothing was saved. */
+    private fun applyToken(mut: String): Boolean {
+        if (mut.length < 20) { addLog("ERROR", "Token too short"); return false }
         prefs.setMUT(mut)
         addLog("OK", "Music-User-Token saved (${mut.length} chars)")
         appScope?.launch {
             runCatching { repo.syncMUTToServer(mut) }.onFailure { addLog("WARN", "Server MUT sync failed: ${it.message}") }
         }
-    }
-
-    /**
-     * Landing page for the automatic hand-off (GET /set-token). Confirms what happened and
-     * tries to close itself — window.close() only works on script-opened tabs (the bookmark
-     * path opens one), otherwise the message stands until the user closes the tab.
-     */
-    private fun tokenReceivedPage(): String {
-        val ok = prefs.hasMUT()
-        return """<!DOCTYPE html><html><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Apple Music TV</title><style>
-body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;padding:40px;text-align:center}
-.t{font-size:18px;font-weight:600;margin-bottom:8px}.s{font-size:12px;color:#666;line-height:1.7}
-.g{color:#34c759}.r{color:#ff3b30}</style></head><body>
-<div class="t ${if (ok) "g" else "r"}">${if (ok) "Token received ✓" else "No token arrived"}</div>
-<div class=s>${if (ok) "You can close this page and go back to the TV — it picks the token up on its own."
-                   else "Go back and make sure you are signed in on music.apple.com, or paste the token manually on the previous page."}</div>
-<script>setTimeout(function(){window.close()},1500)</script>
-</body></html>"""
+        return true
     }
 
     private fun handleEvent(socket: Socket) {
@@ -424,304 +427,360 @@ body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;paddi
     private fun logsJson() = "[${getLogs().joinToString(",") { "\"${it.replace("\"","'")}\"" }}]"
     private fun netLogsJson() = "[${NetworkLog.getAll().joinToString(",") { "\"${it.replace("\"","'")}\"" }}]"
 
+    /** Escape a value that reaches the page as HTML text or an attribute. */
+    private fun esc(v: String) = v
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+
+    /** Escape a value that reaches a JS string literal. */
+    private fun js(v: String) = "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
     /**
-     * The :8080 control page, branching on [PageAudience]. The companion app's WebView gets
-     * the big "sign in" button that navigates itself to music.apple.com; iOS gets the
-     * Shortcut install-and-run steps instead of Chrome DevTools, which does not exist on the
-     * phone; every other browser keeps the two-method card and the DevTools guide. The manual
-     * paste box below stays on every branch, as the fallback for when every automated path
-     * fails.
-     *
-     * An iPad in default desktop mode sends a Macintosh UA and arrives here as Other. Its
-     * touchscreen is invisible in the header, so the Other branch carries a small script
-     * that redirects a touch-capable Macintosh client once to `/?ios=1`; that request
-     * reaches the iOS branch. The script is not emitted on the other branches, so there is
-     * no redirect loop.
+     * Server-side QR for the desktop branches, where the phone that should scan it is a
+     * different device. Reuses the app's own encoder (byte mode, EC-M, versions 1–6 — 106
+     * bytes max); the URLs here are 20–50 bytes. Returns "" when the text does not fit, so a
+     * future longer URL degrades to "no QR" instead of taking the page down.
      */
-    private fun html(audience: PageAudience.Audience): String {
+    private fun qrSvg(text: String, side: Int = 132): String {
+        val m = QrCode.encode(text) ?: return ""
+        val n = m.size
+        val path = buildString {
+            for (r in 0 until n) for (c in 0 until n) if (m[r][c]) {
+                append('M').append(c).append(' ').append(r).append("h1v1h-1z")
+            }
+        }
+        // The four-module quiet zone lives in the viewBox: scanners that reject a code
+        // bleeding into its background are the usual "why won't it scan" case. Both fills
+        // must be quoted — in an unquoted attribute the self-closing slash becomes part of
+        // the value (`#fff/`), the colour is invalid, and the whole code renders black.
+        return """<div class=qrbox><svg viewBox="-4 -4 ${n + 8} ${n + 8}" width=$side height=$side shape-rendering=crispEdges>""" +
+            """<rect x=-4 y=-4 width=${n + 8} height=${n + 8} fill="#fff"/><path d="$path" fill="#000"/></svg></div>"""
+    }
+
+    /**
+     * The :8080 control page: four tabs — sign in, Android companion, iOS Shortcut, settings —
+     * built from hidden radios and `:checked`, so switching never reloads and the log polling
+     * keeps running. [audience] picks the default tab and the companion/iOS wording; [lang]
+     * picks one of the two complete copy sets in [PageStrings].
+     *
+     * `?tab=` is the deep link and what the post-save redirects use. `?saved=1` / `?error=1`
+     * render above the tabs, not inside one: the confirmation must survive a default tab that
+     * points elsewhere (an iOS visitor defaults to the Shortcut tab).
+     *
+     * QRs render only for a desktop browser — a phone already on the page has nothing to scan.
+     */
+    private fun html(
+        audience: PageAudience.Audience,
+        lang: PageLang,
+        tabParam: Int?,
+        saved: Boolean,
+        rejected: Boolean,
+        mobile: Boolean,
+    ): String {
+        val s: PageStrings = if (lang == PageLang.ZH) PageStringsZh else PageStringsEn
         val has = prefs.hasMUT()
-        val preview = if (has) prefs.getMUT().take(32) + "…" else ""
+        val preview = if (has) esc(prefs.getMUT().take(32) + "…") else ""
         val currentOffset = lyricsOffsetPrefs.getOffset()
         val currentBeatLatency = beatAnalyzer.latencyMs
         val standaloneOn = standalonePrefs.isEnabled()
-        val serverIp = serverPrefs.getPcServerIp()
+        val serverIp = esc(serverPrefs.getPcServerIp())
         val pp = context.getSharedPreferences("player_state", Context.MODE_PRIVATE)
         val volLevelOn = pp.getBoolean("volume_leveling", false)
         val currentCrossfade = crossfadePrefs.getDuration()
         val crossfadeSec = "%.1f".format(currentCrossfade / 1000f)
+        val hasCrash = com.applemusicktv.util.CrashReporter.lastCrash(context) != null
         val logRows = getLogs().reversed().take(80).joinToString("") { log ->
             val cls = when { log.contains("[OK]") -> "g"; log.contains("[ERROR]") -> "r"; log.contains("[WARN]") -> "y"; else -> "d" }
-            "<div class=$cls>${log.replace("<","&lt;")}</div>"
-        }.ifEmpty { "<div class=d>No logs yet.</div>" }
+            "<div class=$cls>${esc(log)}</div>"
+        }.ifEmpty { "<div class=d>${s.noLogs}</div>" }
         val netRows = NetworkLog.getAll().reversed().take(100).joinToString("") { log ->
             val cls = when { log.contains("✓") -> "g"; log.contains("✗") -> "r"; else -> "d" }
-            "<div class=$cls>${log.replace("<","&lt;")}</div>"
-        }.ifEmpty { "<div class=d>No requests yet.</div>" }
-        val signInCard = when (audience) {
-            PageAudience.Audience.CompanionApp -> """
-<div class=card>
-<h2>Sign in to Apple Music</h2>
-<div style="font-size:12px;color:#999;line-height:1.7;margin-bottom:10px">Sign in with your Apple ID (password and 2FA are painless here). Once you're signed in, the app sends the token to the TV on its own and reloads this page — then just go back to the TV.</div>
-<a class="btn btn-p" style=text-decoration:none href="https://music.apple.com/">Open music.apple.com &amp; sign in</a>
-</div>
-"""
-            PageAudience.Audience.Ios -> iosSignInCard()
-            PageAudience.Audience.Other -> """
-<div class=card>
-<h2>Two ways to sign in</h2>
-<div style="font-size:12px;color:#999;line-height:1.9"><strong style=color:#ccc>Method 1 · paste the token (original)</strong> — copy your Music-User-Token (guide in "How to get your token" below) and save it with the <strong style=color:#ccc>Set Token</strong> card on this page. Works in any browser.</div>
-<div style="font-size:12px;color:#999;line-height:1.9;margin-top:8px"><strong style=color:#6bcb77>Method 2 · companion app (automatic)</strong> — install the <strong style=color:#ccc>AMTV Companion</strong> APK on an Android phone on the same Wi-Fi, open it, type this TV's address (<span style="font-family:monospace;color:#aaa">${serverUrl()}</span>), and sign in to Apple Music there. The token lands here on its own. <a href=/companion.apk style=color:#fa233b>Download the companion APK here</a>.</div>
-</div>
-"""
+            "<div class=$cls>${esc(log)}</div>"
+        }.ifEmpty { "<div class=d>${s.noRequests}</div>" }
+
+        val activeTab = tabParam ?: when {
+            saved || rejected -> 1
+            audience == PageAudience.Audience.Ios -> 3
+            audience == PageAudience.Audience.CompanionApp -> 1
+            mobile -> 2
+            else -> 1
         }
-        // The DevTools walkthrough is only reachable from a desktop browser. iOS gets the
-        // fallbacks it can actually act on; Chrome's developer tools do not exist there.
-        val tokenGuideCard = if (audience == PageAudience.Audience.Ios) iosFallbackCard() else """
-<div class=card>
-<h2>How to get your token</h2>
-<ol>
-<li>Open <strong style=color:#ccc>music.apple.com</strong> in Chrome · sign in</li>
-<li>DevTools (F12) → Network tab</li>
-<li>Play any song</li>
-<li>Find request to <code>amp-api-edge.music.apple.com</code></li>
-<li>Copy the <code>Media-User-Token</code> request header value</li>
-</ol>
-</div>
-"""
+        val showQr = audience == PageAudience.Audience.Other && !mobile
+        fun qrBlock(url: String, caption: String): String =
+            if (!showQr) "" else "<div class=qrcol>${qrSvg(url)}<div class=qrcap>$caption</div></div>"
+        fun radio(id: Int): String =
+            "<input type=radio name=tab id=t$id value=$id${if (activeTab == id) " checked" else ""}>"
+        fun list(items: List<String>): String = items.joinToString("") { "<li>$it</li>" }
+
+        val banner = when {
+            saved && has -> "<div class=banner>${esc(s.savedBanner(prefs.getMUT().length))}</div>"
+            rejected -> "<div class=banner bad>${esc(s.rejectedBanner)}</div>"
+            else -> ""
+        }
         // Default iPadOS Safari sends a Macintosh UA, so the server cannot tell it from a
         // real Mac; only the page sees the touchscreen. Emitted on the Other branch alone,
         // and a redirected load carries ios=1, so the redirect cannot loop.
         val ipadDesktopRedirect = if (audience == PageAudience.Audience.Other) """
-// iPadOS in desktop mode sends a Macintosh UA, so the server cannot tell it from a Mac.
-// A touch screen reports more than one touch point: redirect once to the iOS branch.
 if (navigator.maxTouchPoints > 1 && navigator.userAgent.indexOf('Macintosh') !== -1 &&
     new URLSearchParams(location.search).get('ios') !== '1') {
-  location.replace('/?ios=1');
+  var ipadUrl = new URL(location.href); ipadUrl.searchParams.set('ios', '1'); location.replace(ipadUrl.toString());
 }
 """ else ""
-        return """<!DOCTYPE html><html lang=en><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1">
+
+        return """<!DOCTYPE html><html lang=${lang.htmlLang}><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1">
 <title>Apple Music TV</title><style>
-*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,sans-serif;background:#0a0a0a;color:#e5e5e7;padding:20px;max-width:620px;margin:auto}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:#0a0a0a;color:#e5e5e7;padding:20px;max-width:680px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
 h1{font-size:20px;font-weight:700;margin-bottom:2px}
-.sub{font-size:11px;color:#444;margin-bottom:20px;font-family:monospace}
+.sub{font-size:11px;color:#444;font-family:monospace;word-break:break-all}
+.lang{font-size:12px;color:#aaa;text-decoration:none;border:1px solid #2c2c2e;border-radius:999px;padding:8px 14px;white-space:nowrap}
 .card{background:#111;border-radius:12px;padding:16px;margin-bottom:12px}
 h2{font-size:10px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+body.zh h2{font-size:12px;text-transform:none;letter-spacing:0;color:#666}
 .row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .dot-g{background:#34c759}.dot-r{background:#ff3b30}
 .g{color:#34c759}.r{color:#ff3b30}.y{color:#ffd60a}.d{color:#555}
 .label{font-size:13px;color:#ccc}
 .sub2{font-size:10px;color:#555;font-family:monospace;word-break:break-all;margin-top:2px}
+.hint{font-size:12px;color:#999;line-height:1.7;margin-bottom:10px}
+.note{font-size:11px;color:#888;line-height:1.6;margin-top:8px}
+.help{font-size:10px;color:#555;line-height:1.7;margin-top:8px}
+.stephead{font-size:12px;color:#999;margin:16px 0 2px}
+.banner{background:#0f2a18;border:1px solid #1f4d2c;color:#6bcb77;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;margin-bottom:12px}
+.banner.bad{background:#2a1012;border-color:#4d1f24;color:#ff6b6b}
+.tabwrap{position:relative}
+.tabwrap input{position:absolute;opacity:0;pointer-events:none}
+.tabbar{display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;padding-bottom:2px;scrollbar-width:none}
+.tabbar::-webkit-scrollbar{display:none}
+.tabbar label{flex:0 0 auto;padding:11px 16px;border-radius:999px;background:#151515;border:1px solid #232323;color:#999;font-size:14px;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+#t1:checked~.tabbar label[for=t1],#t2:checked~.tabbar label[for=t2],#t3:checked~.tabbar label[for=t3],#t4:checked~.tabbar label[for=t4]{background:#fa233b;border-color:#fa233b;color:#fff}
+#t1:focus-visible~.tabbar label[for=t1],#t2:focus-visible~.tabbar label[for=t2],#t3:focus-visible~.tabbar label[for=t3],#t4:focus-visible~.tabbar label[for=t4]{outline:2px solid #fa233b;outline-offset:2px}
+.panel{display:none}
+#t1:checked~.p1,#t2:checked~.p2,#t3:checked~.p3,#t4:checked~.p4{display:block}
+.split{display:flex;gap:16px;align-items:flex-start}
+.main{flex:1;min-width:0}
+.qrcol{flex:0 0 auto;text-align:center}
+.qrbox{background:#fff;border-radius:10px;padding:6px;display:inline-block}
+.qrbox svg{display:block;width:132px;height:132px}
+.qrcap{font-size:10px;color:#888;margin-top:6px;max-width:144px}
+.addr{font-family:monospace;font-size:13px;color:#6bcb77;word-break:break-all;margin:2px 0 10px}
 textarea{width:100%;background:#1c1c1e;border:1.5px solid #2c2c2e;border-radius:8px;color:#e5e5e7;font-family:monospace;font-size:11px;padding:10px;min-height:80px;outline:none;resize:vertical}
 textarea:focus{border-color:#fa233b}
-.btn{display:block;width:100%;padding:12px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer;margin-top:8px;text-align:center}
+.btn{display:block;width:100%;padding:13px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer;margin-top:8px;text-align:center}
 .btn-p{background:#fa233b;color:#fff}.btn-s{background:#1c1c1e;color:#888}
 .btn:active{opacity:.7}
-ol{font-size:12px;color:#666;line-height:2.4;padding-left:18px}code{color:#fa233b;font-family:monospace;font-size:11px}
+ol{font-size:12px;color:#888;line-height:2;padding-left:18px}
+ul{font-size:12px;color:#888;line-height:1.9;padding-left:18px;margin-top:8px}
+code{color:#fa233b;font-family:monospace;font-size:11px}
+details{margin-top:12px}
+summary{font-size:12px;color:#888;cursor:pointer}
 .logs{background:#080808;border-radius:8px;padding:10px;max-height:240px;overflow-y:auto;font-family:monospace;font-size:10px;line-height:1.8}
 .rbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .rbtn{background:none;border:1px solid #222;color:#555;padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer}
 .rbtn:active{color:#aaa}
+@media (min-width:700px){body{padding:28px}}
 </style>
 <script>
-$ipadDesktopRedirect
+var I18N={active:${js(s.statusActive)},none:${js(s.statusNone)},nologs:${js(s.noLogs)},noreqs:${js(s.noRequests)},copied:${js(s.copied)},failed:${js(s.copyFailed)},copy:${js(s.copy)}};
+function renderStatus(h){var el=document.getElementById('status');if(!el)return;el.innerHTML='<div class=row><div class="dot '+(h?'dot-g':'dot-r')+'"></div><div class=label>'+(h?I18N.active:I18N.none)+'</div></div>';}
 function refresh(){
-  fetch('/status').then(r=>r.json()).then(s=>{
-    const el=document.getElementById('status');
-    if(el)el.innerHTML=s.hasMUT?'<div class="row"><div class="dot dot-g"></div><div><div class=label>Music-User-Token active</div></div></div>':'<div class="row"><div class="dot dot-r"></div><div><div class=label>No token</div></div></div>';
-  });
-  fetch('/logs').then(r=>r.json()).then(logs=>{
-    const el=document.getElementById('applogs');
-    if(el)el.innerHTML=logs.reverse().slice(0,80).map(l=>{const c=l.includes('[OK]')?'g':l.includes('[ERROR]')?'r':l.includes('[WARN]')?'y':'d';return'<div class='+c+'>'+l.replace(/</g,'&lt;')+'</div>';}).join('')||'<div class=d>No logs.</div>';
-  });
-  fetch('/netlogs').then(r=>r.json()).then(logs=>{
-    const el=document.getElementById('netlogs');
-    if(el)el.innerHTML=logs.reverse().slice(0,100).map(l=>{const c=l.includes('✓')?'g':l.includes('✗')?'r':'d';return'<div class='+c+'>'+l.replace(/</g,'&lt;')+'</div>';}).join('')||'<div class=d>No requests.</div>';
-  });
+  fetch('/status').then(r=>r.json()).then(s=>renderStatus(s.hasMUT));
+  fetch('/logs').then(r=>r.json()).then(logs=>{var el=document.getElementById('applogs');if(!el)return;el.innerHTML=logs.reverse().slice(0,80).map(l=>{var c=l.includes('[OK]')?'g':l.includes('[ERROR]')?'r':l.includes('[WARN]')?'y':'d';return'<div class='+c+'>'+l.replace(/</g,'&lt;')+'</div>';}).join('')||'<div class=d>'+I18N.nologs+'</div>';});
+  fetch('/netlogs').then(r=>r.json()).then(logs=>{var el=document.getElementById('netlogs');if(!el)return;el.innerHTML=logs.reverse().slice(0,100).map(l=>{var c=l.includes('✓')?'g':l.includes('✗')?'r':'d';return'<div class='+c+'>'+l.replace(/</g,'&lt;')+'</div>';}).join('')||'<div class=d>'+I18N.noreqs+'</div>';});
 }
 setInterval(refresh,3000);
-function copyLogs(id){
-  fetch(id==='applogs'?'/logs':'/netlogs').then(r=>r.json()).then(logs=>{
-    const text=logs.reverse().join('\n');
-    const b=document.getElementById('copy-'+id);
-    const done=()=>{const orig=b.textContent;b.textContent='Copied!';setTimeout(()=>b.textContent=orig,1500);};
-    // navigator.clipboard only exists in a secure context (HTTPS/localhost). This
-    // page is served over plain HTTP on a LAN IP, so it's usually undefined — fall
-    // back to a hidden textarea + execCommand, which works in insecure contexts.
-    if(navigator.clipboard&&window.isSecureContext){
-      navigator.clipboard.writeText(text).then(done).catch(()=>legacyCopy(text,done,b));
-    } else { legacyCopy(text,done,b); }
-  });
-}
-function legacyCopy(text,done,b){
-  try{
-    const ta=document.createElement('textarea');
-    ta.value=text;ta.style.position='fixed';ta.style.top='0';ta.style.left='0';ta.style.opacity='0';
-    document.body.appendChild(ta);ta.focus();ta.select();
-    const ok=document.execCommand('copy');
-    document.body.removeChild(ta);
-    if(ok)done();else{b.textContent='Copy failed';setTimeout(()=>b.textContent='Copy',1500);}
-  }catch(e){b.textContent='Copy failed';setTimeout(()=>b.textContent='Copy',1500);}
-}
+function copyLogs(id){fetch(id==='applogs'?'/logs':'/netlogs').then(r=>r.json()).then(logs=>{var text=logs.reverse().join('\n');var b=document.getElementById('copy-'+id);var done=function(){var orig=b.textContent;b.textContent=I18N.copied;setTimeout(function(){b.textContent=orig;},1500);};if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done).catch(function(){legacyCopy(text,done,b);});}else{legacyCopy(text,done,b);}});}
+function legacyCopy(text,done,b){try{var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.top='0';ta.style.left='0';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();var ok=document.execCommand('copy');document.body.removeChild(ta);if(ok){done();}else{b.textContent=I18N.failed;setTimeout(function(){b.textContent=I18N.copy;},1500);}}catch(e){b.textContent=I18N.failed;setTimeout(function(){b.textContent=I18N.copy;},1500);}}
+function goLang(l){var u=new URL(location.href);u.searchParams.set('lang',l);var t=document.querySelector('input[name=tab]:checked');if(t)u.searchParams.set('tab',t.value);location.href=u.toString();return false;}
+document.querySelectorAll('input[name=tab]').forEach(function(r){r.addEventListener('change',function(){var u=new URL(location.href);u.searchParams.set('tab',r.value);history.replaceState(null,'',u.toString());});});
+$ipadDesktopRedirect
 </script>
-</head><body>
-<h1>Apple Music TV</h1>
-<p class=sub>${serverUrl()}</p>
+</head><body class=${if (lang == PageLang.ZH) "zh" else "en"}>
+<header>
+<div><h1>Apple Music TV</h1><p class=sub>${serverUrl()}</p></div>
+<a class=lang href="?lang=${if (lang == PageLang.ZH) "en" else "zh"}" onclick="return goLang('${if (lang == PageLang.ZH) "en" else "zh"}')">${s.otherLangLabel}</a>
+</header>
 
 <div class=card>
-<h2>Status</h2>
+<h2>${s.tStatus}</h2>
 <div id=status>
-<div class=row><div class="dot ${if(has)"dot-g" else "dot-r"}"></div><div><div class=label>Music-User-Token</div>${if(has)"<div class=sub2>$preview</div>" else "<div class=sub2 style=color:#555>Not set — paste below</div>"}</div></div>
+<div class=row><div class="dot ${if (has) "dot-g" else "dot-r"}"></div><div><div class=label>${if (has) s.statusActive else s.statusNone}</div>${if (has) "<div class=sub2>$preview</div>" else "<div class=sub2>${s.statusNotSet}</div>"}</div></div>
 </div>
 </div>
+${banner}
+<div class=tabwrap>
+${radio(1)}${radio(2)}${radio(3)}${radio(4)}
+<nav class=tabbar>
+<label for=t1>${s.tabSignIn}</label>
+<label for=t2>${s.tabAndroid}</label>
+<label for=t3>${s.tabIos}</label>
+<label for=t4>${s.tabSettings}</label>
+</nav>
 
-${signInCard}
+<section class="panel p1">
+${if (audience == PageAudience.Audience.CompanionApp) companionCard(s) else ""}
 <div class=card>
-<h2>Set Token</h2>
+<h2>${s.tSetToken}</h2>
+<p class=hint>${s.pasteIntro}</p>
 <form method=POST action=/set-token>
-<textarea name=mut placeholder="eyJra… paste your Music-User-Token here"></textarea>
-<button class="btn btn-p" type=submit>Save Token</button>
+<textarea name=mut placeholder="${esc(s.pastePlaceholder)}"></textarea>
+<button class="btn btn-p" type=submit>${s.btnSave}</button>
 </form>
-${if(has)"<form method=POST action=/clear-token><button class='btn btn-s' type=submit>Clear Token</button></form>" else ""}
+${if (has) "<form method=POST action=/clear-token><button class='btn btn-s' type=submit>${s.btnClear}</button></form>" else ""}
 </div>
+${if (audience == PageAudience.Audience.Ios) """
+<div class=card><h2>${s.tabIos}</h2><p class=hint style=margin:0>${s.iosNoDevtools}</p></div>
+""" else devtoolsCard(s)}
+</section>
 
+<section class="panel p2">
 <div class=card>
-<h2>Lyrics Offset</h2>
-<div class=row><div class=label>Current offset</div><div class=sub2 style=color:#aaa>${currentOffset}ms</div></div>
+<h2>${s.tAndroid}</h2>
+<div class=split>
+<div class=main>
+<p class=hint>${s.androidIntro}</p>
+<ol>${list(s.androidSteps)}</ol>
+<div class=stephead>${s.androidAddress}</div>
+<div class=addr>${serverUrl()}</div>
+<a class="btn btn-p" href=/companion.apk download style=text-decoration:none>${s.androidDownload}</a>
+<details><summary>${s.androidFaq}</summary><ul>${list(s.androidFaqItems)}</ul></details>
+</div>
+${qrBlock(serverUrl() + "/companion.apk", s.androidQr)}
+</div>
+</div>
+</section>
+
+<section class="panel p3">
+<div class=card>
+<h2>${s.tIos}</h2>
+<div class=split>
+<div class=main>
+<p class=hint>${s.iosIntro}</p>
+<a class="btn btn-p" style=text-decoration:none href="${ShortcutDistribution.importDeepLinkHtml()}">${s.iosInstall}</a>
+<div class=note>${s.iosInstallNote}</div>
+<div class=hint style=margin-top:16px>${s.iosOffline}</div>
+<a class="btn btn-s" style=text-decoration:none href=/send-token-to-tv.shortcut download>${s.iosOfflineBtn}</a>
+<div class=note>${s.iosOfflineNote}</div>
+<div class=stephead>${s.iosAfter}</div>
+<ol>
+<li>${s.iosStepAddress(serverUrl())}</li>
+${list(s.iosSteps)}
+</ol>
+<div class=stephead>${s.iosPrereq}</div>
+<ol>${list(s.iosPrereqItems)}</ol>
+<details><summary>${s.iosFaq}</summary><ul>${list(s.iosFaqItems)}</ul></details>
+</div>
+${qrBlock(serverUrl() + "/?ios=1", s.iosQr)}
+</div>
+</div>
+</section>
+
+<section class="panel p4">
+<div class=card>
+<h2>${s.tLyrics}</h2>
+<div class=row><div class=label>${s.currentOffset}</div><div class=sub2 style=color:#aaa>${currentOffset}ms</div></div>
 <form method=POST action=/set-lyrics-offset>
 <input name=offset type=number value="$currentOffset" placeholder="0" style="width:100%;background:#1c1c1e;border:1.5px solid #2c2c2e;border-radius:8px;color:#e5e5e7;font-family:monospace;font-size:13px;padding:10px;outline:none;margin-top:4px">
-<button class="btn btn-p" type=submit style=margin-top:8px>Set Offset (ms)</button>
+<button class="btn btn-p" type=submit style=margin-top:8px>${s.setOffset}</button>
 </form>
-<div style="font-size:10px;color:#555;margin-top:8px">Positive = lyrics show earlier. Negative = later. Try +200 if lyrics feel late.</div>
+<div class=help>${s.lyricsHelp}</div>
 </div>
 
 <div class=card>
-<h2>Beat Latency</h2>
-<div class=row><div class=label>Current latency</div><div class=sub2 style=color:#aaa>${currentBeatLatency}ms</div></div>
+<h2>${s.tBeat}</h2>
+<div class=row><div class=label>${s.currentLatency}</div><div class=sub2 style=color:#aaa>${currentBeatLatency}ms</div></div>
 <form method=POST action=/set-beat-latency>
 <input name=latency type=range min=0 max=500 step=10 value="$currentBeatLatency" oninput="document.getElementById('bv').textContent=this.value+'ms'" style="width:100%;accent-color:#fa233b;margin-top:8px">
 <div style="font-size:12px;color:#aaa;text-align:center;margin-top:4px"><span id=bv>${currentBeatLatency}ms</span></div>
-<button class="btn btn-p" type=submit style=margin-top:8px>Apply &amp; Reset</button>
+<button class="btn btn-p" type=submit style=margin-top:8px>${s.applyReset}</button>
 </form>
-<div style="font-size:10px;color:#555;margin-top:8px">0 = TV speakers. ~200 = typical Bluetooth. Resets beat buffer on apply.</div>
+<div class=help>${s.beatHelp}</div>
 </div>
 
 <div class=card>
-<h2>Computer (proxy server)</h2>
-<div class=row><div class=label>Current</div><div class=sub2 style=color:#aaa>${if (serverIp.isEmpty()) "not set" else serverIp}</div></div>
+<h2>${s.tComputer}</h2>
+<div class=row><div class=label>${s.current}</div><div class=sub2 style=color:#aaa>${if (serverIp.isEmpty()) s.notSet else serverIp}</div></div>
 <form method=POST action=/set-server-ip>
 <input name=serverip type=text inputmode=decimal placeholder="192.168.1.190" value="$serverIp" style="width:100%;box-sizing:border-box;padding:10px;margin-top:8px;border-radius:6px;border:1px solid #333;background:#0d0d0d;color:#fff;font-family:monospace;font-size:15px">
-<button class="btn btn-p" type=submit style=margin-top:8px>Set Computer IP</button>
+<button class="btn btn-p" type=submit style=margin-top:8px>${s.setComputerIp}</button>
 </form>
-<div style="font-size:10px;color:#555;margin-top:8px">Port 3000 is assumed. Needed for browse, library, search and lyrics. Leave blank to use the built-in default.</div>
+<div class=help>${s.computerHelp}</div>
 </div>
 
 <div class=card>
-<h2>Standalone mode (no PC)</h2>
-<div class=row><div class=label>Status</div><div class=sub2 style="color:${if (standaloneOn) "#6bcb77" else "#aaa"}">${if (standaloneOn) "ON — everything on the TV" else "OFF — using the PC server"}</div></div>
+<h2>${s.tStandalone}</h2>
+<div class=row><div class=label>${s.status}</div><div class=sub2 style="color:${if (standaloneOn) "#6bcb77" else "#aaa"}">${if (standaloneOn) s.standaloneOn else s.standaloneOff}</div></div>
 <form method=POST action=/set-standalone>
 <input type=hidden name=standalone value="${if (standaloneOn) "0" else "1"}">
-<button class="btn ${if (standaloneOn) "" else "btn-p"}" type=submit style=margin-top:8px>${if (standaloneOn) "Turn OFF" else "Turn ON"}</button>
+<button class="btn ${if (standaloneOn) "" else "btn-p"}" type=submit style=margin-top:8px>${if (standaloneOn) s.turnOff else s.turnOn}</button>
 </form>
-<div style="font-size:10px;color:#555;margin-top:8px">Talks to Apple directly for browse, library, search, artwork, lyrics AND playback — the PC is not needed at all. Songs start in ~1s instead of 15-20s. Trade-off: some tracks have segment gaps the PC remux repairs, so audio can chop. Applies from the next song.</div>
+<div class=help>${s.standaloneHelp}</div>
 </div>
 
 <div class=card>
-<h2>Volume Leveling</h2>
-<div class=row><div class=label>Status</div><div class=sub2 style="color:${if (volLevelOn) "#6bcb77" else "#aaa"}">${if (volLevelOn) "ON — evening out loudness" else "OFF — each track at its own level"}</div></div>
+<h2>${s.tVolume}</h2>
+<div class=row><div class=label>${s.status}</div><div class=sub2 style="color:${if (volLevelOn) "#6bcb77" else "#aaa"}">${if (volLevelOn) s.volumeOn else s.volumeOff}</div></div>
 <form method=POST action=/set-volume-leveling>
 <input type=hidden name=vol value="${if (volLevelOn) "0" else "1"}">
-<button class="btn ${if (volLevelOn) "" else "btn-p"}" type=submit style=margin-top:8px>${if (volLevelOn) "Turn OFF" else "Turn ON"}</button>
+<button class="btn ${if (volLevelOn) "" else "btn-p"}" type=submit style=margin-top:8px>${if (volLevelOn) s.turnOff else s.turnOn}</button>
 </form>
-<div style="font-size:10px;color:#555;margin-top:8px">Slow automatic gain so quiet masters come up and loud ones come down. Takes effect immediately. Watch it work in the App Logs (VOL lines).</div>
+<div class=help>${s.volumeHelp}</div>
 </div>
 
 <div class=card>
-<h2>Crossfade</h2>
-<div class=row><div class=label>Current length</div><div class=sub2 style=color:#aaa>${crossfadeSec}s</div></div>
+<h2>${s.tCrossfade}</h2>
+<div class=row><div class=label>${s.currentLength}</div><div class=sub2 style=color:#aaa>${crossfadeSec}s</div></div>
 <form method=POST action=/set-crossfade>
 <input name=crossfade type=range min=${CrossfadePreferences.MIN_MS} max=${CrossfadePreferences.MAX_MS} step=500 value="$currentCrossfade" oninput="document.getElementById('cv').textContent=(this.value/1000).toFixed(1)+'s'" style="width:100%;accent-color:#fa233b;margin-top:8px">
 <div style="font-size:12px;color:#aaa;text-align:center;margin-top:4px"><span id=cv>${crossfadeSec}s</span></div>
-<button class="btn btn-p" type=submit style=margin-top:8px>Set Crossfade</button>
+<button class="btn btn-p" type=submit style=margin-top:8px>${s.setCrossfade}</button>
 </form>
-<div style="font-size:10px;color:#555;margin-top:8px">Applies from the next song — a fade already running keeps its length. Longer fades need the next track prefetched earlier.</div>
+<div class=help>${s.crossfadeHelp}</div>
 </div>
 
 <div class=card>
-<h2>Bug Report</h2>
-<div class=row><div class=label>Last crash</div><div class=sub2 style="color:${if (com.applemusicktv.util.CrashReporter.lastCrash(context) != null) "#ff3b30" else "#6bcb77"}">${if (com.applemusicktv.util.CrashReporter.lastCrash(context) != null) "crash on file" else "none"}</div></div>
-<a class="btn btn-p" href=/report download style=text-decoration:none>Download Bug Report</a>
-<form method=POST action=/clear-crash><button class="btn btn-s" type=submit>Clear crash log</button></form>
-<div style="font-size:10px;color:#555;margin-top:8px">Bundles app version, device, the last crash and recent app + network logs into one text file to share.</div>
+<h2>${s.tBug}</h2>
+<div class=row><div class=label>${s.lastCrash}</div><div class=sub2 style="color:${if (hasCrash) "#ff3b30" else "#6bcb77"}">${if (hasCrash) s.crashOnFile else s.crashNone}</div></div>
+<a class="btn btn-p" href=/report download style=text-decoration:none>${s.downloadReport}</a>
+<form method=POST action=/clear-crash><button class="btn btn-s" type=submit>${s.clearCrash}</button></form>
+<div class=help>${s.bugHelp}</div>
 </div>
 
-${tokenGuideCard}
-
 <div class=card>
-<div class=rbar><h2 style=margin:0>Network Activity</h2><div style=display:flex;gap:6px><button class=rbtn id=copy-netlogs onclick="copyLogs('netlogs')">Copy</button><button class=rbtn onclick=refresh()>↻</button></div></div>
+<div class=rbar><h2 style=margin:0>${s.tNet}</h2><div style=display:flex;gap:6px><button class=rbtn id=copy-netlogs onclick="copyLogs('netlogs')">${s.copy}</button><button class=rbtn onclick=refresh()>↻</button></div></div>
 <div class=logs id=netlogs>$netRows</div>
 </div>
 
 <div class=card>
-<div class=rbar><h2 style=margin:0>App Logs</h2><div style=display:flex;gap:6px><button class=rbtn id=copy-applogs onclick="copyLogs('applogs')">Copy</button><button class=rbtn onclick=refresh()>↻</button></div></div>
+<div class=rbar><h2 style=margin:0>${s.tAppLogs}</h2><div style=display:flex;gap:6px><button class=rbtn id=copy-applogs onclick="copyLogs('applogs')">${s.copy}</button><button class=rbtn onclick=refresh()>↻</button></div></div>
 <div class=logs id=applogs>$logRows</div>
+</div>
+</section>
 </div>
 </body></html>"""
     }
 
     /**
-     * The iOS half of the audience branch: install the Shortcut, set the TV address inside
-     * it, sign in to music.apple.com in Safari, run it from that page's share sheet. Chrome
-     * DevTools is deliberately absent — it does not exist on iOS.
-     *
-     * The one-tap import is the primary action. iOS refuses `http://` import targets, so it
-     * points at the https copy of the signed artifact ([ShortcutDistribution]); the TV-local
-     * `/send-token-to-tv.shortcut` download below it serves the identical bytes and is the
-     * offline path. iOS always ends the one-tap flow with its own **Add** confirmation, which
-     * this page cannot skip — saying so avoids a user thinking the install failed.
-     *
-     * The three prerequisite names are verbatim from shortcut/README.md, because a user
-     * searching Settings matches on the exact label.
+     * The companion app's WebView signature screen: it *is* the Android companion, so this
+     * tab opens Apple's sign-in directly instead of explaining how to install itself.
      */
-    private fun iosSignInCard() = """
+    private fun companionCard(s: PageStrings) = """
 <div class=card>
-<h2>Sign in with the Shortcut (iOS)</h2>
-<div style="font-size:12px;color:#999;line-height:1.7;margin-bottom:10px">A signed Shortcut reads the token from your own signed-in Safari session — no iOS app and no developer account. Install it once, then run it from the share sheet whenever the token needs refreshing.</div>
-<a class="btn btn-p" style=text-decoration:none href="${ShortcutDistribution.importDeepLinkHtml()}">Install the Shortcut</a>
-<div style="font-size:11px;color:#888;line-height:1.6;margin-top:8px">This opens the install preview in the Shortcuts app. iOS still asks you to tap <strong style=color:#ccc>Add</strong> to finish — that confirmation cannot be skipped.</div>
-<div style="font-size:12px;color:#999;line-height:1.9;margin-top:16px"><strong style=color:#ccc>Offline path</strong> — if the phone cannot reach the internet during setup, download the identical signed file from this TV instead:</div>
-<a class="btn btn-s" style=text-decoration:none href=/send-token-to-tv.shortcut download>Download the Shortcut from this TV</a>
-<div style="font-size:11px;color:#888;line-height:1.6;margin-top:8px">Same artifact as the one-tap install: open the file in <strong style=color:#ccc>Files</strong> and tap <strong style=color:#ccc>Add</strong>.</div>
-<div style="font-size:12px;color:#999;line-height:1.9;margin-top:16px"><strong style=color:#ccc>After it is added</strong></div>
-<ol>
-<li>Open the Shortcut's Text action and replace the TV address with <span style="font-family:monospace;color:#aaa">${serverUrl()}</span>.</li>
-<li>Sign in to <strong style=color:#ccc>music.apple.com</strong> in <strong style=color:#ccc>Safari</strong>.</li>
-<li>On that page tap <strong style=color:#ccc>Share</strong> → <strong style=color:#ccc>Send Token to TV</strong> and let it run. It reports whether the TV accepted the token.</li>
-</ol>
-<div style="font-size:12px;color:#999;line-height:1.9;margin-top:8px"><strong style=color:#ccc>Three prerequisites</strong>, once:</div>
-<ol>
-<li><strong style=color:#ccc>Allow Running Scripts</strong> — Settings → Shortcuts → Advanced → Allow Running Scripts = on.</li>
-<li><strong style=color:#ccc>Share-sheet availability</strong> — in the Shortcut's details, Show in Share Sheet = on for Safari web pages. Only Safari works; Chrome and Firefox do not hand the page over.</li>
-<li><strong style=color:#ccc>Local Network permission</strong> — the first run asks to find devices on your local network; tap Allow.</li>
-</ol>
+<h2>${s.tabSignIn}</h2>
+<p class=hint>${s.companionSignInBody}</p>
+<a class="btn btn-p" style=text-decoration:none href="https://music.apple.com/">${s.companionSignInBtn}</a>
 </div>
 """
 
-    /**
-     * Replaces the DevTools guide on iOS, where it cannot be followed. Everything named here
-     * is a fallback this page already offers: the manual paste box, plus the failures an iOS
-     * user can act on without a computer.
-     */
-    private fun iosFallbackCard() = """
+    /** The DevTools walkthrough — only reachable from a desktop browser, by definition. */
+    private fun devtoolsCard(s: PageStrings) = """
 <div class=card>
-<h2>If the Shortcut does not work</h2>
-<ol>
-<li><strong style=color:#ccc>Paste the token above</strong> — the Set Token box works in any browser and is the last resort for every path.</li>
-<li><strong style=color:#ccc>No token on the page</strong> — sign in at music.apple.com in Safari, then run the Shortcut from that page's share sheet.</li>
-<li><strong style=color:#ccc>TV unreachable</strong> — check that the phone and this TV are on the same network, and that the address inside the Shortcut matches the one at the top of this page.</li>
-<li><strong style=color:#ccc>Worked for months, then stopped</strong> — the token lasts roughly six months; sign in again and re-run the Shortcut.</li>
-</ol>
+<h2>${s.tHowTo}</h2>
+<ol>${s.guideSteps.joinToString("") { "<li>$it</li>" }}</ol>
 </div>
 """
 }
-

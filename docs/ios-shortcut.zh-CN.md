@@ -7,8 +7,8 @@
 Media-User-Token（MUT），再通过局域网把 Token 交接给电视。不需要 iOS app，不需要 Xcode，
 也不需要开发者账号 —— 为什么这样选见
 [ADR-0002](adr/0002-ios-shortcut-instead-of-an-app.md)。这份指南覆盖从一台全新的
-iPhone 或 iPad 到完成录入、资料库歌曲开始播放的全过程。电视上的 8080 设置页面是英文的，
-本指南引用的就是页面上的英文标签。
+iPhone 或 iPad 到完成录入、资料库歌曲开始播放的全过程。电视上的 8080 设置页面支持简体中文与
+英文：右上角可切换，或在地址后加 `?lang=zh`。本指南以中文标签为准，括号里给出对应的英文标签。
 
 ## 开始之前：三个前置条件
 
@@ -31,10 +31,11 @@ iPhone 或 iPad 到完成录入、资料库歌曲开始播放的全过程。电�
 
 ### 从电视页面一键安装
 
-1. 在手机上打开 `http://<TV_IP>:8080` —— 地址显示在电视的签入界面上。
-2. 在 **Sign in with the Shortcut (iOS)** 卡片里点 **Install the Shortcut**。这个链接会直接
+1. 在手机上打开 `http://<TV_IP>:8080` —— 地址显示在电视的签入界面上。页面会自动落在
+   **iOS 快捷指令**页签。
+2. 在该页签里点 **安装快捷指令**（Install the Shortcut）。这个链接会直接
    打开「快捷指令」的导入预览。
-3. 点 **Add** 完成。iOS 总会要求这一次确认，页面无法跳过：看到预览并不代表安装失败，
+3. 点 **添加** 完成。iOS 总会要求这一次确认，页面无法跳过：看到预览并不代表安装失败，
    只是在等这一下。
 
 iOS 不接受 `http://` 的导入目标，所以一键链接指向 https 上的发布资产。它与电视提供的是
@@ -44,7 +45,7 @@ iOS 不接受 `http://` 的导入目标，所以一键链接指向 https 上的�
 
 如果设置时手机上不了互联网，电视仍然可以把文件交给你：
 
-1. 在同一个设置页上点 **Download the Shortcut from this TV**。
+1. 在同一个 **iOS 快捷指令**页签里点 **从电视下载快捷指令**（Download the Shortcut from this TV）。
 2. 在**文件**中打开下载的 `Send Token to TV.shortcut`。链接路径是连字符形式
    `/send-token-to-tv.shortcut`，但保存到「文件」里的文件名保留空格 —— 导入后的快捷指令
    就用这个名字。
@@ -72,7 +73,7 @@ iOS 不接受 `http://` 的导入目标，所以一键链接指向 https 上的�
 ## 成功的样子
 
 - 通知正文是 `Token received — the TV can now play your library.`
-- 电视设置页的状态卡变绿，显示 `Music-User-Token active`。
+- 电视设置页顶部的状态行变绿，显示 `Music-User-Token 已生效`。
 - 电视的**资料库**开始出现你的歌曲、专辑和个人歌单。
 - 资料库里的歌完整播放，而不是 30 秒试听。
 
@@ -100,9 +101,10 @@ MUT 大约六个月有效。快捷指令和电视都不需要为此更新；过�
 
 ### 在电视页面手动粘贴
 
-打开 `http://<TV_IP>:8080`，找到 **Set Token** 卡片，把 Token 粘进输入框并点 **Save Token**。
-表单会 POST 到 `/set-token`，电视随后重定向回 `/`；页面上的 Status 卡片变绿，显示
-`Music-User-Token active`。要粘贴的值就是 `media-user-token` 这个 Cookie；如何复制它见
+打开 `http://<TV_IP>:8080`，切到 **登录**页签，找到 **设置 Token** 卡片：把 Token 粘进输入框并点
+**保存 Token**。表单会 POST 到 `/set-token`，电视随后重定向到 `/?tab=1&saved=1` —— 回到该页签并
+在顶部显示绿色横幅，状态行变绿并显示 `Music-User-Token 已生效`。要粘贴的值就是
+`media-user-token` 这个 Cookie；如何复制它见
 [TECHNICAL.zh-CN.md](TECHNICAL.zh-CN.md#获取你的-music-user-token) 中的桌面步骤，或下面的
 Mac 走查。
 
@@ -115,9 +117,10 @@ Mac 走查。
 3. 让 `music.apple.com` 标签页在前台，选择 开发 → **显示 Web 检查器**。
 4. 打开 **存储** → **Cookie** → `music.apple.com`。
 5. 选中 `media-user-token`，复制它的值。
-6. 粘贴到电视页面的 **Set Token** 卡片，点 **Save Token**。
+6. 粘贴到电视页面 **登录**页签的 **设置 Token** 卡片，点 **保存 Token**。
 
-**Set Token** 卡片在设置页的每个版本上都有，包括 iOS 版本，所以手动粘贴永远可用。
+**登录**页签是桌面浏览器的默认页签，其中的粘贴框是所有方式的兜底 —— 无论从哪个页签进来，
+它都可达。
 
 ## 安全
 
