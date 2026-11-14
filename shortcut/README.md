@@ -20,7 +20,7 @@ added in #14; this directory is only about the phone.
 | Path | What it is |
 | --- | --- |
 | `source/Send Token to TV.shortcut` | The unsigned source, exactly what gets signed. Normally an export from the Shortcuts app; the current file is the generated scaffold recorded in [`VERIFICATION.md`](VERIFICATION.md). |
-| `Send Token to TV.shortcut` | The signed artifact (AEA1 container). What a phone imports. Published twice with identical bytes: the https release asset behind the page's one-tap **Install** button, and the TV-served offline fallback at `/send-token-to-tv.shortcut`. |
+| `Send Token to TV.shortcut` | The signed artifact (AEA1 container). What a phone imports. Published twice with identical bytes: the https raw copy behind the page's one-tap **Install** button, and the TV-served offline fallback at `/send-token-to-tv.shortcut`. |
 | `sign.sh` | Signs the source and checks the AEA1 header. |
 | `VERIFICATION.md` | The on-device run that justifies shipping the artifact. |
 
@@ -36,40 +36,44 @@ the same file in both places, not a second build:
 
 | Copy | URL | Role |
 | --- | --- | --- |
-| https release asset | `https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-Token-to-TV.shortcut` | Primary: the page's **Install the Shortcut** button, via `shortcuts://import-shortcut?url=…&name=Send%20Token%20to%20TV`. |
+| https raw copy | `https://raw.githubusercontent.com/AK9810/apple-music-tv/68e33888f812b206d8dbf949c959b668eece216a/shortcut/Send%20Token%20to%20TV.shortcut` | Primary: the page's **Install the Shortcut** button, via `shortcuts://import-shortcut?url=…&name=Send%20Token%20to%20TV`. |
 | TV-local file | `http://TV:8080/send-token-to-tv.shortcut` | Offline fallback: download, open in Files, Add. Needs no internet. |
 
-The https copy is the asset attached to the existing stable release **v1.7**.
-Its `sha256` is
+The https copy is a **raw** URL pinned to the commit that finalized the signed
+artifact. Its `sha256` is
 `e8dfba9ddf2b5e8dcc5df1ec82ed74500bb00808783dfa0161288c8763814fd8`,
-the same bytes the TV serves. It is deliberately attached to an existing stable
-release instead of a new release: a new non-prerelease would take over
-`/releases/latest` (breaking the APK badge and the stable updater), and a new
-prerelease without an `.apk` would become the beta channel's first result.
+the same bytes the TV serves.
 
-The URL is pinned to the **v1.7** tag on purpose: that tag fixes this exact
-verified artifact, and the URL stays valid for as long as v1.7 exists. The asset
-name is hyphenated (`Send-Token-to-TV.shortcut`), but the tag and the immutable
-asset are what keep the link stable, not the naming convention. The local file's
-name, `Send Token to TV.shortcut`, is the name the Shortcut takes when imported
-from Files; the one-tap link passes `&name=Send%20Token%20to%20TV` to title it
-with spaces. That URL-import path is still device-unverified: the record in
-[`VERIFICATION.md`](VERIFICATION.md) covers importing the file from Files, not
-the one-tap link.
+It is not a `releases/download/...` asset any more, on purpose: GitHub answers
+that URL with a 302 to signed storage, and the Shortcuts import handler needs a
+direct file — a redirect reaches the phone as **Import Failed** (observed on a
+real iPhone, 2026-11-14; the TV-local download imported fine with the same
+bytes). The raw host answers `200` with `application/octet-stream` and no
+redirect. The v1.7 release asset remains as a mirror for anyone downloading
+manually, but it is not what the import link points at.
+
+Pinning to a commit SHA keeps the URL as immutable as a tag did: re-signing
+means a new commit, a new SHA in `ShortcutDistribution.HTTPS_URL`, and a fresh
+device check.
 
 To re-publish after a rebuild (only after `./sign.sh` and fresh real-device
 checks in [`VERIFICATION.md`](VERIFICATION.md)):
 
 ```bash
-cp "shortcut/Send Token to TV.shortcut" /tmp/Send-Token-to-TV.shortcut
-gh release upload v1.7 /tmp/Send-Token-to-TV.shortcut --clobber
-curl -sL https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-Token-to-TV.shortcut | shasum -a 256
+git add "shortcut/Send Token to TV.shortcut" && git commit -m "sign(shortcut): ..."
+git rev-parse HEAD    # update ShortcutDistribution.HTTPS_URL + its test to this SHA
+curl -sSI https://raw.githubusercontent.com/AK9810/apple-music-tv/<sha>/shortcut/Send%20Token%20to%20TV.shortcut   # must be 200
+curl -sS  https://raw.githubusercontent.com/AK9810/apple-music-tv/<sha>/shortcut/Send%20Token%20to%20TV.shortcut | shasum -a 256
 ```
 
-The `cp` renames the file to the release asset name; upload it under that name so
-the published URL does not change. `--clobber` replaces the existing asset in
-place. The final `shasum` must match the `Signed sha256` in
-[`VERIFICATION.md`](VERIFICATION.md) and the artifact in this directory.
+The final `shasum` must match the `Signed sha256` in
+[`VERIFICATION.md`](VERIFICATION.md) and the artifact in this directory. The
+release mirror can be refreshed separately; it does not affect the import link:
+
+```bash
+cp "shortcut/Send Token to TV.shortcut" /tmp/Send-Token-to-TV.shortcut
+gh release upload v1.7 /tmp/Send-Token-to-TV.shortcut --clobber
+```
 
 Neither copy contains a secret. The only per-user value is the TV address in the
 editable **Text** action; the signature gates import, not later edits, so the
