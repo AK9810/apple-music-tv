@@ -73,7 +73,7 @@ Standalone mode needs no server. The optional PC proxy path is described in the 
 
 Built with Jetpack Compose for TV, Media3 (ExoPlayer), Hilt, Retrofit/Moshi and Coil. The optional proxy server is a Bun + Hono app wrapping Apple Music's web APIs.
 
-Architecture, the on-device Widevine/CENC pipeline, the auth flow, CI, and build notes live in **[docs/TECHNICAL.md](docs/TECHNICAL.md)**. Deeper dives: [Apple Music API notes](docs/apple-music-api.md) · [MUT flow](docs/mut-flow.md) · [Projector mode](docs/PROJECTOR_MODE_NOTES.md).
+Architecture, the on-device Widevine/CENC pipeline, the auth flow, CI, and build notes live in **[docs/TECHNICAL.md](docs/TECHNICAL.md)**. Deeper dives: [Apple Music API notes](docs/apple-music-api.md) · [MUT flow](docs/mut-flow.md) · [Projector mode](docs/PROJECTOR_MODE_NOTES.md) · [ADR-0002: iOS Shortcut, not an app](docs/adr/0002-ios-shortcut-instead-of-an-app.md).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to build it, [SECURITY.md](SECURITY.md) for token handling, and [ROADMAP.md](ROADMAP.md) for what's planned.
 

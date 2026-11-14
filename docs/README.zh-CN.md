@@ -73,7 +73,7 @@
 
 使用 Jetpack Compose for TV、Media3（ExoPlayer）、Hilt、Retrofit/Moshi 和 Coil 构建。可选的代理服务器是一个基于 Bun + Hono 的应用，封装了 Apple Music 的 Web API。
 
-架构、设备端 Widevine/CENC 管线、认证流程、CI 和构建说明都在 **[TECHNICAL.zh-CN.md](TECHNICAL.zh-CN.md)** 中。深入阅读：[Apple Music API 笔记](apple-music-api.zh-CN.md) · [MUT 流程](mut-flow.zh-CN.md) · [投影模式](PROJECTOR_MODE_NOTES.zh-CN.md)。
+架构、设备端 Widevine/CENC 管线、认证流程、CI 和构建说明都在 **[TECHNICAL.zh-CN.md](TECHNICAL.zh-CN.md)** 中。深入阅读：[Apple Music API 笔记](apple-music-api.zh-CN.md) · [MUT 流程](mut-flow.zh-CN.md) · [投影模式](PROJECTOR_MODE_NOTES.zh-CN.md) · [ADR-0002：iOS 用快捷指令而不是 app](adr/0002-ios-shortcut-instead-of-an-app.md)。
 
 构建方法见 [CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)，Token 处理见 [SECURITY.zh-CN.md](SECURITY.zh-CN.md)，后续计划见 [ROADMAP.zh-CN.md](ROADMAP.zh-CN.md)。
 
