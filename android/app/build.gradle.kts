@@ -64,8 +64,10 @@ android {
     }
 
     sourceSets.getByName("main") {
-        // :8080 serves the companion APK out of assets (GET /companion.apk).
+        // :8080 serves the companion APK and the signed iOS Shortcut out of assets
+        // (GET /companion.apk, GET /send-token-to-tv.shortcut).
         assets.srcDir(layout.buildDirectory.dir("companion-apk"))
+        assets.srcDir(layout.buildDirectory.dir("shortcut-asset"))
     }
 }
 
@@ -94,8 +96,18 @@ val copyCompanionApk = tasks.register<Copy>("copyCompanionApk") {
     rename { "companion.apk" }
     dependsOn(":companion:assembleDebug")
 }
+// Bundle the signed iOS Shortcut into the TV app's assets too, so the phone page can offer
+// an offline install with no internet and no GitHub round-trip. The tracked artifact keeps
+// its human name (spaces included, it names the Shortcut on import); only the asset copy is
+// renamed to pure ASCII, and the route path ends in .shortcut so Safari/Files recognise it.
+val copyShortcut = tasks.register<Copy>("copyShortcut") {
+    from(File(rootDir, "../shortcut/Send Token to TV.shortcut"))
+    into(layout.buildDirectory.dir("shortcut-asset"))
+    rename { "send-token-to-tv.shortcut" }
+}
 tasks.matching { it.name == "mergeDebugAssets" || it.name == "mergeReleaseAssets" }.configureEach {
     dependsOn(copyCompanionApk)
+    dependsOn(copyShortcut)
 }
 
 dependencies {
