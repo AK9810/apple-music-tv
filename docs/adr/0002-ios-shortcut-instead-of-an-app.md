@@ -13,7 +13,7 @@ MUT 是访问资料库（歌曲、专辑、艺人、个人歌单）的前提，�
 不开发原生 iOS app。iOS 使用一个 **iOS 快捷指令（Shortcut）**：从用户已登录的 Safari 会话中取出 MUT，经局域网交给电视。
 
 1. **不引入 Xcode / 开发者账号 / 证书。** iOS 侧没有任何需要编译或签名的二进制，也就没有重新签名的问题。
-2. **快捷指令由「快捷指令」app 签名，作为文件分发。** 用 `shortcuts sign -m anyone` 签名后发布 `.shortcut` 文件；用户打开导入即可，不需要 App Store，也不需要 Apple Developer 账号。
+2. **快捷指令由「快捷指令」app 签名，作为文件分发。** 用 `shortcuts sign -m anyone` 签名后发布 `.shortcut` 文件；用户打开导入即可，不需要 App Store，也不需要 Apple Developer 账号。搭建配方、签名命令和真机验证记录在 [shortcut/README.md](../../shortcut/README.md)。
 3. **捕获方式就是 `document.cookie`。** 快捷指令在已登录的 `music.apple.com` 页面上读取 `media-user-token` —— 与 Apple 自家网页播放器读取的是同一个值。
 4. **交接复用现有的表单 Token 端点。** 以 `application/x-www-form-urlencoded` 把 `mut` POST 到 `http://<TV_IP>:8080/set-token`，再 `GET /status`（`hasMUT`）确认结果；不新增接口，也不改电视端协议。
 5. **不走配对，也不加鉴权。** 和 Android 伴侣应用一样，这是局域网内明文 HTTP 的一次性交接，暴露面与缓解措施见 [SECURITY.md](../../SECURITY.md)。
