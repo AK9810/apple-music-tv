@@ -18,6 +18,16 @@ package com.applemusicktv.util
  * stay raw — so the inner URL keeps its dots (`github.com`, not `github%2Ecom`)
  * and reads in the ordinary percent-encoded form.
  *
+ * [HTTPS_URL] is deliberately pinned to the v1.7 release instead of
+ * `releases/latest`. The Shortcut is verified once, not rebuilt on every
+ * release: that asset is immutable and its `sha256` is recorded in
+ * `shortcut/VERIFICATION.md`, so the link keeps resolving to the exact bytes a
+ * real phone accepted. A `latest` link would follow whichever release happens to
+ * be newest and break silently if that release does not carry the Shortcut. This
+ * is the deliberate exception to CLAUDE.md's version-agnostic APK-download rule —
+ * that rule exists because the APK is built for every release; this is not the
+ * APK.
+ *
  * Deliberately free of Android imports: plain Kotlin, testable on the JVM.
  */
 object ShortcutDistribution {

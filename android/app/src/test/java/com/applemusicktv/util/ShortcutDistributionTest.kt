@@ -22,7 +22,7 @@ import org.junit.Test
 class ShortcutDistributionTest {
 
     @Test
-    fun `the published url is the v1_7 release asset`() {
+    fun `the published url is the verified release asset`() {
         assertEquals(
             "https://github.com/AK9810/apple-music-tv/releases/download/v1.7/" +
                 "Send-Token-to-TV.shortcut",
