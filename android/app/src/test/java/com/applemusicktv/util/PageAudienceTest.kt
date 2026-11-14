@@ -89,7 +89,7 @@ class PageAudienceTest {
     fun `the companion marker wins over an iOS user agent`() {
         // The real companion UA is desktop Chrome, but the marker must keep priority on
         // principle: that WebView drives the automated sign-in, so mistaking it for iOS
-        // would show manual Shortcut steps where a one-tap button belongs.
+        // would show manual Shortcut steps where the companion's sign-in button belongs.
         val ua = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) " +
             "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 AMTVCompanion/1.0"
         assertEquals(Audience.CompanionApp, PageAudience.of(ua))

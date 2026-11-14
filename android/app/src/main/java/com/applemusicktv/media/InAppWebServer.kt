@@ -13,7 +13,6 @@ import com.applemusicktv.util.FormBody
 import com.applemusicktv.util.PageAudience
 import com.applemusicktv.util.PageLang
 import com.applemusicktv.util.QrCode
-import com.applemusicktv.util.ShortcutDistribution
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import java.io.*
@@ -568,6 +567,10 @@ body.zh h2{font-size:12px;text-transform:none;letter-spacing:0;color:#666}
 .qrbox svg{display:block;width:132px;height:132px}
 .qrcap{font-size:10px;color:#888;margin-top:6px;max-width:144px}
 .addr{font-family:monospace;font-size:13px;color:#6bcb77;word-break:break-all;margin:2px 0 10px}
+.addrrow{display:flex;align-items:center;gap:10px;margin:2px 0 10px}
+.addrrow .addr{margin:0;flex:1;min-width:0}
+.copybtn{flex:0 0 auto;background:#1c1c1e;border:1px solid #2c2c2e;color:#ccc;padding:8px 12px;border-radius:8px;font-size:12px;cursor:pointer}
+.copybtn:active{opacity:.7}
 textarea{width:100%;background:#1c1c1e;border:1.5px solid #2c2c2e;border-radius:8px;color:#e5e5e7;font-family:monospace;font-size:11px;padding:10px;min-height:80px;outline:none;resize:vertical}
 textarea:focus{border-color:#fa233b}
 .btn{display:block;width:100%;padding:13px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer;margin-top:8px;text-align:center}
@@ -585,7 +588,7 @@ summary{font-size:12px;color:#888;cursor:pointer}
 @media (min-width:700px){body{padding:28px}}
 </style>
 <script>
-var I18N={active:${js(s.statusActive)},none:${js(s.statusNone)},nologs:${js(s.noLogs)},noreqs:${js(s.noRequests)},copied:${js(s.copied)},failed:${js(s.copyFailed)},copy:${js(s.copy)}};
+var I18N={active:${js(s.statusActive)},none:${js(s.statusNone)},nologs:${js(s.noLogs)},noreqs:${js(s.noRequests)},copied:${js(s.copied)},failed:${js(s.copyFailed)}};
 function renderStatus(h){var el=document.getElementById('status');if(!el)return;el.innerHTML='<div class=row><div class="dot '+(h?'dot-g':'dot-r')+'"></div><div class=label>'+(h?I18N.active:I18N.none)+'</div></div>';}
 function refresh(){
   fetch('/status').then(r=>r.json()).then(s=>renderStatus(s.hasMUT));
@@ -594,7 +597,14 @@ function refresh(){
 }
 setInterval(refresh,3000);
 function copyLogs(id){fetch(id==='applogs'?'/logs':'/netlogs').then(r=>r.json()).then(logs=>{var text=logs.reverse().join('\n');var b=document.getElementById('copy-'+id);var done=function(){var orig=b.textContent;b.textContent=I18N.copied;setTimeout(function(){b.textContent=orig;},1500);};if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done).catch(function(){legacyCopy(text,done,b);});}else{legacyCopy(text,done,b);}});}
-function legacyCopy(text,done,b){try{var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.top='0';ta.style.left='0';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();var ok=document.execCommand('copy');document.body.removeChild(ta);if(ok){done();}else{b.textContent=I18N.failed;setTimeout(function(){b.textContent=I18N.copy;},1500);}}catch(e){b.textContent=I18N.failed;setTimeout(function(){b.textContent=I18N.copy;},1500);}}
+function copyText(id,btnId){
+  var el=document.getElementById(id);var b=document.getElementById(btnId);
+  if(!el||!b)return;
+  var text=el.textContent.trim();
+  var done=function(){var orig=b.textContent;b.textContent=I18N.copied;setTimeout(function(){b.textContent=orig;},1500);};
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(done).catch(function(){legacyCopy(text,done,b);});}else{legacyCopy(text,done,b);}
+}
+function legacyCopy(text,done,b){var restore=b.textContent;try{var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.top='0';ta.style.left='0';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();var ok=document.execCommand('copy');document.body.removeChild(ta);if(ok){done();}else{b.textContent=I18N.failed;setTimeout(function(){b.textContent=restore;},1500);}}catch(e){b.textContent=I18N.failed;setTimeout(function(){b.textContent=restore;},1500);}}
 function goLang(l){var u=new URL(location.href);u.searchParams.set('lang',l);var t=document.querySelector('input[name=tab]:checked');if(t)u.searchParams.set('tab',t.value);location.href=u.toString();return false;}
 document.querySelectorAll('input[name=tab]').forEach(function(r){r.addEventListener('change',function(){var u=new URL(location.href);u.searchParams.set('tab',r.value);history.replaceState(null,'',u.toString());});});
 $ipadDesktopRedirect
@@ -645,7 +655,7 @@ ${if (audience == PageAudience.Audience.Ios) """
 <p class=hint>${s.androidIntro}</p>
 <ol>${list(s.androidSteps)}</ol>
 <div class=stephead>${s.androidAddress}</div>
-<div class=addr>${serverUrl()}</div>
+<div class=addrrow><div class=addr id=addr-android>${serverUrl()}</div><button class=copybtn type=button id=copy-android onclick="copyText('addr-android','copy-android')">${s.copyAddress}</button></div>
 <a class="btn btn-p" href=/companion.apk download style=text-decoration:none>${s.androidDownload}</a>
 <details><summary>${s.androidFaq}</summary><ul>${list(s.androidFaqItems)}</ul></details>
 </div>
@@ -660,14 +670,13 @@ ${qrBlock(serverUrl() + "/companion.apk", s.androidQr)}
 <div class=split>
 <div class=main>
 <p class=hint>${s.iosIntro}</p>
-<a class="btn btn-p" style=text-decoration:none href="${ShortcutDistribution.importDeepLinkHtml()}">${s.iosInstall}</a>
-<div class=note>${s.iosInstallNote}</div>
-<div class=hint style=margin-top:16px>${s.iosOffline}</div>
-<a class="btn btn-s" style=text-decoration:none href=/send-token-to-tv.shortcut download>${s.iosOfflineBtn}</a>
-<div class=note>${s.iosOfflineNote}</div>
+<a class="btn btn-p" style=text-decoration:none href=/send-token-to-tv.shortcut download>${s.iosDownload}</a>
+<div class=note>${s.iosDownloadNote}</div>
+<div class=stephead>${s.iosAddress}</div>
+<div class=addrrow><div class=addr id=addr-ios>${serverUrl()}</div><button class=copybtn type=button id=copy-ios onclick="copyText('addr-ios','copy-ios')">${s.copyAddress}</button></div>
 <div class=stephead>${s.iosAfter}</div>
 <ol>
-<li>${s.iosStepAddress(serverUrl())}</li>
+<li>${s.iosStepAddress}</li>
 ${list(s.iosSteps)}
 </ol>
 <div class=stephead>${s.iosPrereq}</div>
