@@ -37,43 +37,25 @@ a normal prompt, not a prerequisite.
 
 ## Install the Shortcut
 
-### One tap from the TV page
-
 1. On the phone, open `http://<TV_IP>:8080` — the address is shown on the TV's
    sign-in screen. The page opens on its **iOS Shortcut** tab by itself.
-2. In that tab, tap **Install the Shortcut**.
-   The link opens the Shortcuts import preview directly.
-3. Tap **Add** to finish. iOS always asks for this confirmation and the page
-   cannot skip it: if you see the preview, the install has not failed, it is just
-   waiting for that tap.
-
-iOS refuses `http://` targets for import links, which is why the one-tap link
-points at an https copy. That copy must also answer **directly**: GitHub's
-release downloads reply with a redirect, and the Shortcuts import cannot follow
-it — the phone reports *Import Failed*. The link therefore uses the raw file
-pinned to the commit that finalized the signed artifact. It is the same signed
-file the TV serves.
-
-### Offline: download from the TV
-
-If the phone cannot reach the internet during setup, the TV can still deliver the
-file:
-
-1. In the same **iOS Shortcut** tab, tap **Download the Shortcut from this TV**.
-2. Open the downloaded `Send Token to TV.shortcut` in **Files**. (The link's path
+2. In that tab, tap **Download the Shortcut from this TV**.
+3. Open the downloaded `Send Token to TV.shortcut` in **Files**. (The link's path
    is hyphenated, `/send-token-to-tv.shortcut`; the saved file keeps the spaces in
    its name, which is what names the Shortcut on import.)
-3. Tap **Add**.
+4. Tap **Add**. iOS always asks for this confirmation and it cannot be skipped.
 
-This is the identical signed file as the one-tap path — a different URL, not a
-second build. On a replacement phone, repeat either install path and set the TV
-address again; nothing on the TV changes.
+The TV serves the signed file itself, so this path needs no internet and no
+third-party host. There is deliberately no one-tap import link: iOS requires the
+import URL to be a direct, non-redirecting https file, and the hosts that could
+provide one either redirect or add a distribution channel this project does not
+want to maintain. The download above is the supported path.
 
 ## Set the TV address
 
 After import, open the Shortcut and find the **Text** action named `TV address`.
-Replace `http://TV-IP:8080` with the address at the top of the TV's setup page,
-for example `http://192.168.1.4:8080` — with no trailing slash.
+Tap **Copy address** next to the address on the TV's setup page, then paste it
+over `http://TV-IP:8080` — no trailing slash.
 
 The address stays editable after import; the signature gates import, not later
 edits. If the TV's IP changes, edit this action. There is no need to re-import the
@@ -104,7 +86,6 @@ also makes the TV look signed in, so confirm the library and play a song.
 
 | Symptom | What it means and what to do |
 | --- | --- |
-| Tap **Install the Shortcut** and the Shortcuts app shows **Import Failed**. | The https copy could not be fetched — a redirect, an unreachable host, or a captive network, not a bad signature. Use **Download the Shortcut from this TV** in the same card: the bytes are identical and the Files import path works. |
 | `No token on this page. Sign in at music.apple.com in Safari, then run this Shortcut from that page share sheet.` | Not signed in, or the page carries no `media-user-token` cookie. Sign in at `music.apple.com` **in Safari**, stay on that page, and run the Shortcut from its share sheet. |
 | The Shortcut stops at the JavaScript step (`Run JavaScript on Web Page`) with an error; no notification appears. | **Allow Running Scripts** is off. Settings → Shortcuts → Advanced → Allow Running Scripts = on, then run again. |
 | **Send Token to TV** is missing from Safari's share sheet, or the run ends with the no-token notification. | **Share-sheet availability** is off, the Shortcut was run from the Shortcuts app, or the page is in Chrome / Firefox. Set Show in Share Sheet = on for Safari web pages, open the page in Safari, and share from there — Chrome and Firefox do not hand the page to the action. |

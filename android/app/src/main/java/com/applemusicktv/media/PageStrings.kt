@@ -21,6 +21,8 @@ interface PageStrings {
     val tabAndroid: String
     val tabIos: String
     val tabSettings: String
+    /** Copy button next to the TV address on the Android and iOS tabs. */
+    val copyAddress: String
 
     // Always-visible status row
     val tStatus: String
@@ -55,13 +57,11 @@ interface PageStrings {
     // Tab 3 — iOS Shortcut
     val tIos: String
     val iosIntro: String
-    val iosInstall: String
-    val iosInstallNote: String
-    val iosOffline: String
-    val iosOfflineBtn: String
-    val iosOfflineNote: String
+    val iosDownload: String
+    val iosDownloadNote: String
+    val iosAddress: String
     val iosAfter: String
-    fun iosStepAddress(url: String): String
+    val iosStepAddress: String
     val iosSteps: List<String>
     val iosPrereq: String
     val iosPrereqItems: List<String>
@@ -121,6 +121,7 @@ object PageStringsEn : PageStrings {
     override val tabAndroid = "Android companion"
     override val tabIos = "iOS Shortcut"
     override val tabSettings = "Settings & diagnostics"
+    override val copyAddress = "Copy address"
 
     override val tStatus = "Status"
     override val statusActive = "Music-User-Token active"
@@ -171,17 +172,13 @@ object PageStringsEn : PageStrings {
     override val tIos = "iOS / iPadOS Shortcut"
     override val iosIntro =
         "A signed Shortcut reads the token from your own signed-in Safari session and hands it to the TV over the local network. No iOS app, no developer account, no re-signing."
-    override val iosInstall = "Install the Shortcut"
-    override val iosInstallNote =
-        "Opens the import preview in the Shortcuts app. iOS still asks you to tap <strong style=color:#ccc>Add</strong> — that confirmation cannot be skipped."
-    override val iosOffline =
-        "Offline install — if the phone cannot reach the internet right now, download the identical signed file from this TV:"
-    override val iosOfflineBtn = "Download the Shortcut from this TV"
-    override val iosOfflineNote =
-        "Same artifact as the one-tap install: open it in <strong style=color:#ccc>Files</strong> and tap <strong style=color:#ccc>Add</strong>."
+    override val iosDownload = "Download the Shortcut from this TV"
+    override val iosDownloadNote =
+        "Open the downloaded file in <strong style=color:#ccc>Files</strong> and tap <strong style=color:#ccc>Add</strong>. iOS always asks for that confirmation — it cannot be skipped."
+    override val iosAddress = "TV address"
     override val iosAfter = "After it is added"
-    override fun iosStepAddress(url: String) =
-        "Open the Shortcut's Text action and replace the TV address with <span style=\"font-family:monospace;color:#aaa\">$url</span>."
+    override val iosStepAddress =
+        "Open the Shortcut's Text action and replace its placeholder with the copied TV address."
     override val iosSteps = listOf(
         "Sign in to <strong style=color:#ccc>music.apple.com</strong> in <strong style=color:#ccc>Safari</strong>.",
         "On that page tap <strong style=color:#ccc>Share</strong> → <strong style=color:#ccc>Send Token to TV</strong> and let it run. It reports whether the TV accepted the token.",
@@ -252,6 +249,7 @@ object PageStringsZh : PageStrings {
     override val tabAndroid = "Android 伴侣 App"
     override val tabIos = "iOS 快捷指令"
     override val tabSettings = "设置与诊断"
+    override val copyAddress = "复制地址"
 
     override val tStatus = "状态"
     override val statusActive = "Music-User-Token 已生效"
@@ -299,14 +297,11 @@ object PageStringsZh : PageStrings {
 
     override val tIos = "iOS / iPadOS 快捷指令"
     override val iosIntro = "一个已签名的快捷指令会从你已登录的 Safari 会话里取出 Token，经局域网交给电视。不需要 iOS app，不需要开发者账号，也不用反复重签。"
-    override val iosInstall = "安装快捷指令"
-    override val iosInstallNote = "会打开快捷指令 App 的导入预览。iOS 仍会要求点一次 <strong style=color:#ccc>「添加」</strong> —— 这个确认无法跳过。"
-    override val iosOffline = "离线安装 —— 如果手机此刻没有网络，可以从这台电视下载同一个已签名文件："
-    override val iosOfflineBtn = "从电视下载快捷指令"
-    override val iosOfflineNote = "与一键安装是同一个文件：在 <strong style=color:#ccc>「文件」</strong>里打开，点 <strong style=color:#ccc>「添加」</strong>。"
+    override val iosDownload = "从电视下载快捷指令"
+    override val iosDownloadNote = "在 <strong style=color:#ccc>「文件」</strong>里打开下载的文件，点 <strong style=color:#ccc>「添加」</strong>。iOS 总会要求这一次确认，无法跳过。"
+    override val iosAddress = "电视地址"
     override val iosAfter = "添加之后"
-    override fun iosStepAddress(url: String) =
-        "打开快捷指令里的「文本」动作，把电视地址换成 <span style=\"font-family:monospace;color:#aaa\">$url</span>。"
+    override val iosStepAddress = "打开快捷指令里的「文本」动作，用复制到的电视地址替换里面的占位符。"
     override val iosSteps = listOf(
         "在 <strong style=color:#ccc>Safari</strong> 里登录 <strong style=color:#ccc>music.apple.com</strong>。",
         "在该页面点 <strong style=color:#ccc>「分享」</strong> → <strong style=color:#ccc>「Send Token to TV」</strong> 运行，它会告诉你电视是否收下了 Token。",
