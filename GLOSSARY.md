@@ -53,7 +53,7 @@ _Avoid_: 抓 token, 读 token
 _Avoid_: 配 token, 绑定账号
 
 **交接（hand-off）**:
-companion 或网页把 MUT 交给电视的那一次传递。
+companion、快捷指令或网页表单把 MUT 交给电视的那一次传递。
 _Avoid_: 同步, 上报, 推送
 
 **签入（sign-in）**:
@@ -61,5 +61,5 @@ _Avoid_: 同步, 上报, 推送
 _Avoid_: 登录（单独使用时不区分是建立会话还是把 MUT 交给电视）, 授权
 
 **companion**:
-在同一局域网内协助用户完成签入并把 MUT 交回电视的伴随应用，按平台分安卓版与 iOS 版。
+在同一局域网内协助用户完成签入并把 MUT 交回电视的安卓伴随应用。iOS 不走 companion，而是用快捷指令（见 ADR-0002）。
 _Avoid_: 手机端, 助手 app, 客户端（与电视 app 混淆）
