@@ -4,14 +4,11 @@ Every signed artifact in this directory ships with a real-device record. A clean
 `sign.sh` run is not verification — it only proves the output is an AEA1
 container, not that a phone accepts it or that a TV keeps the token.
 
-**Status: verified on iPhone, iPad and the Android companion (2026-11-14).** One
-re-check is pending: the final build changes the empty-token branch, so check 7
-must be run once more on a signed-out page.
-
-The device evidence below was collected on the build with source
-`57097e61…` / signed `aeb13ef0…`. The current build changes only the no-token
-branch (`completion()` instead of `""`) and the comment text; the happy path is
-unchanged.
+**Status: verified (2026-11-14).** The final build was imported and run on an
+iPhone 16 Pro: the happy path and the no-token branch both behaved as specified.
+The iPad and the Android companion were verified on the previous build, which
+differs only in the no-token branch and a comment string; the companion path is
+independent of the shortcut file.
 
 ## Artifact
 
@@ -59,13 +56,13 @@ alternatives observed while building this.
 
 | # | Check | Expected | Result |
 | --- | --- | --- | --- |
-| 1 | Signed file imports from Files or AirDrop | Review screen → Add Shortcut; no "untrusted" refusal | **Pass** on both iPhone and iPad |
+| 1 | Signed file imports from Files or AirDrop | Review screen → Add Shortcut; no "untrusted" refusal | **Pass** — iPhone 16 Pro on the final build; iPad Air 7 on the previous build (same AEA1/signing path) |
 | 2 | Shortcut details: Show in Share Sheet, input Safari web pages | Appears in Safari's share sheet as "Send Token to TV" | **Pass** |
-| 3 | Run from Safari's share sheet on a signed-in `music.apple.com` page | "Token received — the TV can now play your library." | **Pass** on both devices |
-| 4 | `GET /status` right after the run | `"hasMUT":true`, and a fresh save in the log | **Pass** — `[14:43:49.475][OK] Music-User-Token saved (246 chars)` |
+| 3 | Run from Safari's share sheet on a signed-in `music.apple.com` page | "Token received — the TV can now play your library." | **Pass** — iPhone 16 Pro on the final build; iPad Air 7 on the previous build |
+| 4 | `GET /status` right after the run | `"hasMUT":true`, and a fresh save in the log | **Pass** — `[14:43:49.475][OK] Music-User-Token saved (246 chars)`; the final build's run saved at ~15:20:00 (its proxy sync timed out at 15:20:10) |
 | 5 | Library on the TV | Songs, albums, playlists populated | **Pass** (maintainer) |
 | 6 | Play a library song | Full song, not a 30-second preview | **Pass** — logs show `isFullStream=true` and full durations |
-| 7 | Run on a page with no token (e.g. any non-Apple page in Safari) | "No token on this page."; no `set-token` in the log | **Pending on the final build** — the earlier observation was a run with no Safari page. The final build returns no output instead of `""` here, so this branch must be re-run |
+| 7 | Run on a page with no token (e.g. any non-Apple page in Safari) | "No token on this page."; no `set-token` in the log | **Pass on the final build** — run from `example.com`; the notification appeared and no save followed |
 | 8 | Run with the TV off / wrong address | iOS "Could not connect to the server." | **Observed** — "无法连接服务器" with the TV app closed |
 | 9 | Android companion sign-in, unchanged | Token lands; TV reloads its control page | **Pass** — `[15:02:46.013][OK] Music-User-Token saved (246 chars)`; the companion's native GET hand-off still writes the token |
 
