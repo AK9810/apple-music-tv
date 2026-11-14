@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.tv.material3.*
 import com.applemusicktv.data.model.Album
@@ -31,10 +32,18 @@ fun HomeScreen(
     onPlaylistClick: (id: String, name: String, artworkUrl: String) -> Unit = { _, _, _ -> },
     onCategoryClick: (String) -> Unit = {},
     vm: HomeViewModel = hiltViewModel(),
+    // Bumped when setup finishes. The nav host may hand this route back its saved
+    // scroll position, and finishing setup must always start at the first row
+    // instead of wherever the user happened to be before the replay.
+    resetTick: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val state by vm.state.collectAsState()
     val lowPower = playerVm.state.collectAsState().value.lowPowerMode
+    val listState = rememberLazyListState()
+    LaunchedEffect(resetTick) {
+        if (resetTick > 0) listState.scrollToItem(0)
+    }
 
     if (state.isLoading && state.sections.isEmpty()) {
         Box(modifier.fillMaxSize()) { com.applemusicktv.ui.components.ShelfSkeleton() }
@@ -63,6 +72,7 @@ fun HomeScreen(
     }
 
     LazyColumn(
+        state = listState,
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 28.dp, bottom = 102.dp),
         verticalArrangement = Arrangement.spacedBy(28.dp),

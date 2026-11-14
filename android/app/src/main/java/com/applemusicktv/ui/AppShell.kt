@@ -85,6 +85,9 @@ fun AppShell(modifier: Modifier = Modifier) {
     // server and token are configured, so there is no nav bar and nothing to browse.
     val onboardingVm: com.applemusicktv.ui.viewmodel.OnboardingViewModel = hiltViewModel()
     var showOnboarding by remember { mutableStateOf(!playerVm.onboardingCompleted()) }
+    // Finishing setup must reveal Home at its first row. The nav host restores this route's
+    // saved scroll position, so Home gets a tick to reset its list once the overlay goes away.
+    var homeResetTick by remember { mutableStateOf(0) }
     // "Replay Setup" in Settings resets the pref and fires this — bring setup up right away
     // instead of only on the next launch.
     val replay by playerVm.replayOnboarding.collectAsState()
@@ -99,6 +102,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                 playerVm.onOnboardingFinished()
                 homeVm.load()
                 libraryVm.refresh()
+                homeResetTick++
             },
             modifier = modifier,
         )
@@ -310,6 +314,7 @@ fun AppShell(modifier: Modifier = Modifier) {
                 HomeScreen(
                     playerVm = playerVm,
                     vm = homeVm,
+                    resetTick = homeResetTick,
                     onAlbumClick = { navController.navigate(Screen.AlbumDetail.route(it)) },
                     onPlaylistClick = { id, name, artworkUrl ->
                         navController.navigate(Screen.PlaylistDetail.route(id, name, artworkUrl))
