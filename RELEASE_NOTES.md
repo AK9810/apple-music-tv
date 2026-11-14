@@ -1,18 +1,18 @@
-# Apple Music TV — v1.7
+# Apple Music TV — v1.8
 
-- A render-performance release for low-powered TVs: the focus glow is gone, page transitions went from 700ms to 200ms, Now Playing artwork cuts in instead of cross-fading, and the ambient background is capped at 30fps.
+- iOS joins token setup: a signed Shortcut captures the MUT from your own signed-in Safari and hands it to the TV over the LAN — no app, no developer account. Both sign-in surfaces were rebuilt around the three intake methods, and the control page now speaks English and 简体中文.
 
-*⚡ Focus: glow → outline*
-Cards and transport controls no longer draw tv-material's blurred `glow` shadow — every focused card was running a real `setShadowLayer` blur each frame. Focus is now a 1.5dp white outline plus a subtle 1.05–1.08 scale, closer to Netflix / Google TV; compact transport buttons keep the filled, slightly larger look.
+*📱 Token setup from an iPhone or iPad*
+The TV now serves the signed `Send Token to TV` Shortcut itself (`http://<tv-ip>:8080/send-token-to-tv.shortcut`): download it, open it in Files and add it, set the TV address once, then run it from music.apple.com's share sheet. The phone page detects iPhone/iPad — including iPad in desktop mode — and swaps the impossible Chrome DevTools steps for the Shortcut flow; the Android companion and manual paste are unchanged. Why a Shortcut instead of an app is ADR-0002; why the one-tap `shortcuts://import-shortcut` link was dropped in favour of the TV download is ADR-0004. Verified end-to-end on a real iPhone and a real iPad against a real TV.
 
-*🚀 Navigation is 200ms*
-Full-screen page changes used navigation-compose's default 700ms crossfade — the most stutter-prone moment in the app. They're now a 200ms fade with an 8dp vertical shift. Now Playing's mode switch (player / full-screen lyrics / screensaver) drops from 450ms to 250ms.
+*🪟 Sign-in, in tabs*
+The TV onboarding's sign-in step (which overflowed the 1080p content box by ~50dp) is now three focus-select tabs — browser paste / companion app / iOS·iPadOS — each with one QR code, a one-line summary and a typeable address. The :8080 control page is four CSS tabs (Sign in / Android companion / iOS Shortcut / Settings & diagnostics) with the default tab chosen per visitor, deep-linkable `?tab=` and a green banner when a token lands. The phone-facing tabs gained a one-tap "copy the TV address" button.
 
-*🎨 Now Playing*
-Artwork switches with a hard cut: the old double crossfade (Compose + Coil, 1s each) is gone, and the mood is carried by the 1.5s background tint animation instead. The ambient gradient background renders at 30fps instead of 60 — the drift cycles last 15–34s, so it looks the same while halving the full-screen draw cost.
+*🌐 Bilingual control page*
+The whole :8080 page speaks English and Simplified Chinese: `?lang=zh|en` wins, else the browser's `Accept-Language` primary tag, else English. QR codes render server-side as SVG, and only on desktop browsers — a phone has nothing to scan them with.
 
-*🔧 Under the hood*
-Every duration now comes from one `MotionBudget` object (focus 100–160ms, navigation 200ms, ambient 30fps). The numbers are a budget measured on the baseline device, so an animation that exceeds them counts as a regression rather than a taste decision. Lazy grids get `contentType` for better recycling, the Now Playing EqBars read their animation values in the draw phase instead of recomposing, and Compose compiler stability reports are generated in the build. The Dev menu gained a frame-time overlay with per-frame stats for on-device comparison.
+*🔧 Fixes & hardening*
+Finishing setup no longer drops you into Home scrolled to wherever you left it: the first Home after 开始聆听 starts at the first row (#18). Token form-body parsing is extracted and pinned by tests, so a literal `+` in a token survives (#11), and the Shortcut reports "no token on this page" instead of a false success when Safari isn't signed in (#13).
 
 *📄 Docs*
-The rationale is written up in `docs/adr/0001-tv-motion-and-render-principles.md`, with the Compose stability baseline and the perf roadmap next to it in `docs/performance/`.
+`docs/ios-shortcut.md` (+ its Chinese twin) walks a fresh phone to a playing library song. The `shortcut/` directory ships the build recipe, unsigned source, signed artifact and the verification record. SECURITY.md no longer describes a bookmarklet that never existed, and ADR-0002/0003/0004 record the three decisions behind this release.
