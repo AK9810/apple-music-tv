@@ -407,6 +407,7 @@
     <string name="signin_method1_title">方式一 · 手机浏览器粘贴（原有）</string>
     <string name="signin_method1_body">用手机扫描右侧上方二维码或打开上方地址，在页面上粘贴你的 Music-User-Token，此页面会自动继续。</string>
     <string name="signin_method2_body">在同一 Wi-Fi 的安卓手机上安装 AMTV Companion（扫右侧二维码即可下载），在其中输入上方地址并登录 Apple Music，Token 会自动回传到电视。</string>
+    <string name="signin_ios_hint">用 iPhone 或 iPad？扫上方二维码 —— 页面里会显示快捷指令的安装步骤。</string>
     <string name="signin_method2_url_hint">同一 Wi-Fi 下，也可以在手机浏览器里直接打开下载：</string>
     <string name="signin_method2_title">方式二 · 伴侣 App 自动回传（新加）</string>
     <string name="signin_qr_page">扫码打开粘贴页</string>

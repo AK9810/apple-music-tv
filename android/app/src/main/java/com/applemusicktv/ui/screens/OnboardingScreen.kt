@@ -212,6 +212,14 @@ private fun StepAccount(
             Text(stringResource(R.string.signin_method2_title), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6BCB77))
             Spacer(Modifier.height(4.dp))
             Text(stringResource(R.string.signin_method2_body), fontSize = 13.sp, color = Color(0xFF999999))
+            // iPhone and iPad have no Chrome DevTools, but this screen cannot tell what phone
+            // is scanning. Point iOS users at the upper QR: the page it opens detects them and
+            // shows the Shortcut route instead.
+            Text(
+                stringResource(R.string.signin_ios_hint),
+                fontSize = 13.sp, color = Color(0xFF999999),
+                modifier = Modifier.padding(top = 8.dp),
+            )
             // No scanner handy? The intranet address, spelled out — same URL the QR encodes.
             if (s.phoneUrl.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
