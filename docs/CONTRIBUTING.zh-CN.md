@@ -19,6 +19,7 @@
 | 播放 / ExoPlayer | `.../ui/viewmodel/PlayerViewModel.kt`、`.../media/` |
 | 设备端解密（独立模式） | `.../media/`（Widevine CDM、CENC 解密器、`AppleDirectClient`） |
 | 代理服务器路由 | `server/src/routes/` |
+| iOS 快捷指令（MUT 交接） | `shortcut/` —— 配方、源文件、签名产物、验证记录 |
 
 关于各部分如何拼合、以及那些不那么显然的坑，见 [CLAUDE.md](../CLAUDE.md)（仓库里最详细的文档）。
 

@@ -14,8 +14,8 @@ The TV side already exists and is unchanged: `POST /set-token` with a form field
 
 | Path | What it is |
 | --- | --- |
-| `source/Send Token to TV.shortcut` | The unsigned source. **The source of truth** — edits happen in the app, then this file is replaced. |
-| `Send Token to TV.shortcut` | The signed artifact (AEA1 container). What a phone imports, and what the TV serves for the offline path. |
+| `source/Send Token to TV.shortcut` | The unsigned source, exactly what gets signed. Normally an export from the Shortcuts app; the current file is the generated scaffold recorded in [`VERIFICATION.md`](VERIFICATION.md). |
+| `Send Token to TV.shortcut` | The signed artifact (AEA1 container). What a phone imports; the TV will serve it once [#14](https://github.com/AK9810/apple-music-tv/issues/14) lands. |
 | `sign.sh` | Signs the source and checks the AEA1 header. |
 | `VERIFICATION.md` | The on-device run that justifies shipping the artifact. |
 
@@ -27,7 +27,10 @@ an editable action.
 
 - **Recipe and signing** — this document and `sign.sh`; repeatable.
 - **Build** — the maintainer, once, in the Shortcuts app. The `shortcuts`
-  command-line tool can run, list, view and sign, but not create.
+  command-line tool can run, list, view and sign, but not create. The current
+  artifact predates that step: it was generated as a plist scaffold because the
+  Mac has no *Run JavaScript on Web Page* action, then approved as the shipped
+  source. [`VERIFICATION.md`](VERIFICATION.md) records the provenance.
 - **Verify** — a real iPhone (not a simulator) and a real TV: import, run from
   Safari, and a library song playing. The simulator cannot prove any of it.
 
@@ -58,10 +61,11 @@ The file name **is** the shortcut's name on import: keep `Send Token to TV.short
 or the share-sheet label changes. (The workflow plist carries no name of its own.)
 
 Build it on the iPhone that will run it. The actions are portable, and the Mac's
-Shortcuts app can author the same file — it is what produced the first draft — but
-the Mac has no *Run JavaScript on Web Page* action, so the JavaScript step must
-exist in the plist (identifier `is.workflow.actions.runjavascriptonwebpage`) or be
-added on iOS.
+Shortcuts app can author the same file — it is what produced the first draft —
+but the Mac has no *Run JavaScript on Web Page* action, so the JavaScript step
+must exist in the plist (identifier `is.workflow.actions.runjavascriptonwebpage`)
+or be added on iOS. The current artifact was generated that way; the steps below
+describe the same workflow for any rebuild.
 
 Actions, in order:
 
@@ -86,7 +90,7 @@ Actions, in order:
       - **Otherwise** → **Show Notification** — title `Apple Music TV`; body
         `The TV answered but did not keep the token. Run it again, or paste the
         token on the TV's setup page.`
-4. **Otherwise** → **Show Notification** — title `Apple Music TV`; body `No token
+5. **Otherwise** → **Show Notification** — title `Apple Music TV`; body `No token
    on this page. Sign in at music.apple.com in Safari, then run this Shortcut
    from that page's share sheet.`
 
@@ -115,19 +119,25 @@ a space, this condition must change with it.
 
 ```js
 const match = document.cookie.match(/(?:^|;\s*)media-user-token=([^;]*)/);
-let token = match ? match[1] : "";
-try { token = decodeURIComponent(token); } catch (e) { /* keep the raw value */ }
-completion(token);
+if (!match || !match[1]) {
+  completion();            // no value, not an empty string
+} else {
+  let token = match[1];
+  try { token = decodeURIComponent(token); } catch (e) { /* keep the raw value */ }
+  completion(token);
+}
 ```
 
 - `completion(...)` is the action's callback; its value becomes `Token`.
-- No cookie → `completion("")` → the "No token" notification. That one message
-  covers both "not signed in" and "Apple changed the cookie": in both cases there
-  is nothing to hand over.
+- No cookie → `completion()` with no argument, so the action produces **no
+  output** and the `If` is false. Do not return `""` instead: Shortcuts can treat
+  empty text as a value, which would POST `mut=`; the TV ignores it, but if a
+  token was already set the status still reads true and the Shortcut reports
+  success. (Observed while building this.)
 - `decodeURIComponent` is guarded, so a stray `%` keeps the raw value instead of
   aborting the Shortcut.
 - A literal `+` is safe end to end. The TV's form parser preserves a literal `+`
-  rather than decoding it to a space ([#11](../android/app/src/main/java/com/applemusicktv/util/FormBody.kt)):
+  rather than decoding it to a space ([FormBody.kt, #11](../android/app/src/main/java/com/applemusicktv/util/FormBody.kt)):
   a silently altered token looks like "signed in but the library is empty".
 - The page must be `music.apple.com`. Apple's own web player reads the same
   cookie, which is why no Apple API or developer token is involved.
@@ -166,5 +176,5 @@ iCloud Drive) before retrying.
 
 Edit in the Shortcuts app → export → replace `source/…` → `./sign.sh` → replace
 the artifact → repeat the device checks in `VERIFICATION.md` and update its
-date, hashes and results. Never sign something that is not the export in
-`source/`: that is the drift this directory exists to prevent.
+date, hashes and results. Never sign a file that is not the one in `source/`:
+that is the drift this directory exists to prevent.

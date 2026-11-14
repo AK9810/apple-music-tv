@@ -14,8 +14,8 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 
 | 路径 | 是什么 |
 | --- | --- |
-| `source/Send Token to TV.shortcut` | 未签名源文件。**唯一事实来源** —— 改动在 app 里做，然后替换这个文件。 |
-| `Send Token to TV.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它，电视提供下载的也是它。 |
+| `source/Send Token to TV.shortcut` | 未签名源文件，就是被签名的那份。正常情况下是从「快捷指令」app 导出的文件；当前这份是生成的脚手架，来源记录在 [`VERIFICATION.md`](VERIFICATION.md)。 |
+| `Send Token to TV.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它；等 [#14](https://github.com/AK9810/apple-music-tv/issues/14) 完成后电视也会提供下载。 |
 | `sign.sh` | 给 source 签名，并校验 AEA1 文件头。 |
 | `VERIFICATION.md` | 支撑这个产物可以发布的真机验证记录。 |
 
@@ -26,7 +26,8 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 
 - **配方与签名** —— 本文档和 `sign.sh`，可重复执行。
 - **搭建** —— 维护者用「快捷指令」app 做一次。`shortcuts` 命令行能运行、列出、查看和签名，
-  但不能创建。
+  但不能创建。当前产物早于这一步：因为 Mac 没有「在网页上运行 JavaScript」这个动作，它是先生成
+  plist 脚手架、再经维护者确认作为发布源的；来源记录见 [`VERIFICATION.md`](VERIFICATION.md)。
 - **验证** —— 真实 iPhone（不是模拟器）加真实电视：导入、从 Safari 运行、资料库里的歌能播。
   模拟器证明不了其中任何一条。
 
@@ -53,13 +54,13 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 在那台要运行它的 iPhone 上搭建。这些动作是跨平台的，Mac 的「快捷指令」也能做出同样的文件
 （第一版草稿就是它生成的），但 Mac 没有「在网页上运行 JavaScript」这个动作，所以 JavaScript 步骤
 必须直接写进 plist（标识符 `is.workflow.actions.runjavascriptonwebpage`），或者在 iOS 上补加。
+当前产物就是这样生成的；下面的步骤描述的是任何一次重建都适用的工作流。
 
 动作按顺序：
 
 1. **在网页上运行 JavaScript** —— 输出重命名为 `Token`；输入为「快捷指令输入」（即 Safari 网页）；
    脚本见下。放在第一位：第一个动作默认接收分享进来的网页。
-2. **注释** —— 放在地址动作上方的提示：把 `TV-IP` 换成电视设置页上显示的地址，
-   例如 `http://192.168.1.4:8080`，末尾不要斜杠。
+2. **注释** —— 放在地址动作上方的提示：把 `TV-IP` 换成电视设置页上显示的地址，末尾不要斜杠。
 3. **文本** —— 重命名为 `TV address`；内容 `http://TV-IP:8080`。这是每个用户导入后都要改的动作：
    签名约束的是导入，不是导入后的修改。占位符故意不是真实地址，忘了改会明显连不上，
    而不是去探测另一台设备。
@@ -72,7 +73,7 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
       - **显示通知** —— 标题 `Apple Music TV`；正文 `Token received — the TV can now play your library.`
       - **否则** → **显示通知** —— 标题 `Apple Music TV`；正文 `The TV answered but did not keep the
         token. Run it again, or paste the token on the TV's setup page.`
-4. **否则** → **显示通知** —— 标题 `Apple Music TV`；正文 `No token on this page. Sign in at
+5. **否则** → **显示通知** —— 标题 `Apple Music TV`；正文 `No token on this page. Sign in at
    music.apple.com in Safari, then run this Shortcut from that page's share sheet.`
 
 Token 为空的分支在 POST **之前**，所以空值永远不会被写进去。`否则` 是单独插入的动作
@@ -94,17 +95,22 @@ Token 为空的分支在 POST **之前**，所以空值永远不会被写进去�
 
 ```js
 const match = document.cookie.match(/(?:^|;\s*)media-user-token=([^;]*)/);
-let token = match ? match[1] : "";
-try { token = decodeURIComponent(token); } catch (e) { /* keep the raw value */ }
-completion(token);
+if (!match || !match[1]) {
+  completion();            // 无输出，而不是空字符串
+} else {
+  let token = match[1];
+  try { token = decodeURIComponent(token); } catch (e) { /* keep the raw value */ }
+  completion(token);
+}
 ```
 
 - `completion(...)` 是这个动作的回调，它的值就是 `Token`。
-- 没有 Cookie → `completion("")` → 触发「没有 Token」通知。这一条消息同时覆盖「没登录」和
-  「Apple 改了 Cookie」：两种情况都没有东西可交。
+- 没有 Cookie → 调用不带参数的 `completion()`，动作**没有输出**，`如果` 判为假。不要改成返回
+  `""`：快捷指令可能把空文本当成「有值」，于是 POST 一个空的 `mut`；电视会忽略它，但如果原本
+  已经有 Token，状态仍是 true，快捷指令就会误报成功。（搭这一版时实测到的问题。）
 - `decodeURIComponent` 有保护：遇到孤立的 `%` 时保留原始值，而不是让指令中断。
 - 字面量 `+` 从端到端都是安全的：电视的表单解析会保留字面 `+`，不再把它解码成空格
-  （[#11](../android/app/src/main/java/com/applemusicktv/util/FormBody.kt)）。被悄悄改坏的 Token
+  （[FormBody.kt，#11](../android/app/src/main/java/com/applemusicktv/util/FormBody.kt)）。被悄悄改坏的 Token
   表现成「已登录但资料库是空的」。
 - 页面必须是 `music.apple.com`。Apple 自家网页播放器读的就是同一个 Cookie，所以这条路不涉及
   Apple API 或开发者 Token。
@@ -135,5 +141,5 @@ completion(token);
 ## 修改后重建
 
 在「快捷指令」里改 → 导出 → 替换 `source/…` → `./sign.sh` → 替换签名产物 → 重做
-`VERIFICATION.md` 里的真机检查，并更新日期、哈希和结果。永远不要签一个不是 `source/` 里那份导出的
-文件：这个目录存在的意义就是防止两者漂移。
+`VERIFICATION.md` 里的真机检查，并更新日期、哈希和结果。永远不要签一个不是 `source/` 里的文件：
+这个目录存在的意义就是防止两者漂移。

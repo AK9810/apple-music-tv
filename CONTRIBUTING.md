@@ -19,6 +19,7 @@ Thanks for your interest. This is a personal / educational project, but PRs and 
 | Playback / ExoPlayer | `.../ui/viewmodel/PlayerViewModel.kt`, `.../media/` |
 | On-device decrypt (standalone) | `.../media/` (Widevine CDM, CENC decryptor, `AppleDirectClient`) |
 | Proxy server routes | `server/src/routes/` |
+| iOS Shortcut (MUT hand-off) | `shortcut/` — recipe, source, signed artifact, verification record |
 
 See [CLAUDE.md](CLAUDE.md) for a dense, up-to-date map of how the pieces fit together and the non-obvious gotchas (it's the most detailed doc in the repo).
 
