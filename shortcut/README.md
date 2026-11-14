@@ -14,8 +14,8 @@ The TV side already exists and is unchanged: `POST /set-token` with a form field
 
 | Path | What it is |
 | --- | --- |
-| `source/apple-music-tv-token.shortcut` | The unsigned export from the Shortcuts app. **The source of truth** — edits happen in the app, then this file is replaced. |
-| `apple-music-tv-token.shortcut` | The signed artifact (AEA1 container). What a phone imports, and what the TV serves for the offline path. |
+| `source/Send Token to TV.shortcut` | The unsigned source. **The source of truth** — edits happen in the app, then this file is replaced. |
+| `Send Token to TV.shortcut` | The signed artifact (AEA1 container). What a phone imports, and what the TV serves for the offline path. |
 | `sign.sh` | Signs the source and checks the AEA1 header. |
 | `VERIFICATION.md` | The on-device run that justifies shipping the artifact. |
 
@@ -54,26 +54,29 @@ prerequisite.
 
 ## Build recipe
 
-Build it on the iPhone that will run it. The actions themselves are portable, and
-the Mac's Shortcuts app can author the same file, but authoring where it runs
-keeps one untested variable out of a ticket whose point is a real-device check.
+The file name **is** the shortcut's name on import: keep `Send Token to TV.shortcut`
+or the share-sheet label changes. (The workflow plist carries no name of its own.)
 
-Shortcut name: **Send Token to TV**. The name is what the share sheet shows.
+Build it on the iPhone that will run it. The actions are portable, and the Mac's
+Shortcuts app can author the same file — it is what produced the first draft — but
+the Mac has no *Run JavaScript on Web Page* action, so the JavaScript step must
+exist in the plist (identifier `is.workflow.actions.runjavascriptonwebpage`) or be
+added on iOS.
 
 Actions, in order:
 
-1. **Text** — rename the action `TV address`; value `http://<TV_IP>:8080`, the
+1. **Run JavaScript on Web Page** — rename its output `Token`; input Shortcut
+   Input (the Safari web page); script below. Put it first: the first action's
+   input is the shared webpage by default.
+2. **Text** — rename the action `TV address`; value `http://<TV_IP>:8080`, the
    address the TV shows on its setup page, no trailing slash. This is the only
    action a user edits after import: the signature gates import, not later edits.
-2. **Run JavaScript on Web Page** — rename its output `Token`; input Shortcut
-   Input (the Safari web page); script below.
 3. **If** `Token` **has any value**
    1. **Get Contents of URL** — URL: `TV address` + `/set-token`; Method `POST`;
       Request Body `Form`; one field `mut` = `Token`.
    2. **Get Contents of URL** — URL: `TV address` + `/status`; Method `GET`.
-   3. **Get Dictionary from Input** — input `Contents of URL`.
-   4. **Get Dictionary Value** — `Value` for key `hasMUT` in `Dictionary`.
-   5. **If** `Dictionary Value` **is true**
+   3. **Get Text from Input** — input `Contents of URL`; output `Status text`.
+   4. **If** `Status text` **contains** `"hasMUT":true`
       - **Show Notification** — title `Apple Music TV`; body `Token received —
         the TV can now play your library.`
       - **Otherwise** → **Show Notification** — title `Apple Music TV`; body
@@ -90,6 +93,19 @@ block), not toggled.
 To point an action at a variable, tap the parameter field and pick the action
 from *Select Variable* — renaming actions in step 1 and 2 is what makes the
 variable names unambiguous.
+
+### Why the status check is a text match
+
+`Get Dictionary Value` would be the obvious way to read `hasMUT`, but its output
+is a generic value, and Shortcuts only offers the *has any value* conditions for
+it — a crafted `is true` condition imports unresolved ("choose a value for each
+parameter"). Coercing the boolean to text does not help either: the coercion is
+localized, so it is `true` in English but `是` in Chinese, and a literal `true`
+comparison silently takes the failure branch. Both were observed while building
+this. `GET /status` returns `{"hasMUT":true,…}` with no spaces (`InAppWebServer.status()`),
+so testing the response text for `"hasMUT":true` is deterministic and
+locale-independent today. It is a formatting dependency: if that JSON ever gains
+a space, this condition must change with it.
 
 ### The page script
 
@@ -127,7 +143,7 @@ design's requirements ([#10](https://github.com/AK9810/apple-music-tv/issues/10)
 1. In the Shortcut editor, tap the Shortcut's name (the down-arrow beside it) →
    **Export File** → save to Files or AirDrop it over. Do not use *iCloud Link*:
    that publishes a copy instead of giving us the file.
-2. Put the export at `shortcut/source/apple-music-tv-token.shortcut`.
+2. Put the export at `shortcut/source/Send Token to TV.shortcut`.
 3. `./shortcut/sign.sh` — runs `shortcuts sign -m anyone`, refuses anything that
    is not an AEA1 container, and prints both SHA-256s.
 4. On a real iPhone: remove the local unsigned copy, import the signed artifact

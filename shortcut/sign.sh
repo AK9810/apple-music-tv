@@ -4,8 +4,10 @@
 #
 #   ./shortcut/sign.sh [source] [output]
 #
-# Input  : shortcut/source/apple-music-tv-token.shortcut  (exported from the Shortcuts app)
-# Output : shortcut/apple-music-tv-token.shortcut         (the shipped artifact)
+# Input  : shortcut/source/Send Token to TV.shortcut  (exported from the Shortcuts app)
+# Output : shortcut/Send Token to TV.shortcut         (the shipped artifact)
+#
+# The file name is the shortcut's name on import, so keep it verbatim.
 #
 # `shortcuts sign -m anyone` wraps the workflow in an AEA1 container. That wrapper
 # is what lets a phone import the file without an "untrusted shortcut" toggle; a
@@ -17,8 +19,8 @@
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
-src=${1:-$here/source/apple-music-tv-token.shortcut}
-out=${2:-$here/apple-music-tv-token.shortcut}
+src=${1:-"$here/source/Send Token to TV.shortcut"}
+out=${2:-"$here/Send Token to TV.shortcut"}
 
 [ -f "$src" ] || { echo "error: no source at $src" >&2; exit 1; }
 [ "$src" != "$out" ] || { echo "error: source and output are the same file" >&2; exit 1; }

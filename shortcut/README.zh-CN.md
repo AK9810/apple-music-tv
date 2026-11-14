@@ -14,8 +14,8 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 
 | 路径 | 是什么 |
 | --- | --- |
-| `source/apple-music-tv-token.shortcut` | 从「快捷指令」app 导出的未签名文件。**唯一事实来源** —— 改动在 app 里做，然后替换这个文件。 |
-| `apple-music-tv-token.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它，电视提供下载的也是它。 |
+| `source/Send Token to TV.shortcut` | 未签名源文件。**唯一事实来源** —— 改动在 app 里做，然后替换这个文件。 |
+| `Send Token to TV.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它，电视提供下载的也是它。 |
 | `sign.sh` | 给 source 签名，并校验 AEA1 文件头。 |
 | `VERIFICATION.md` | 支撑这个产物可以发布的真机验证记录。 |
 
@@ -47,24 +47,25 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 
 ## 搭建配方
 
-在那台要运行它的 iPhone 上搭建。这些动作本身是跨平台的，Mac 的「快捷指令」也能做出同样的文件，
-但既然这个票要的是真机验证，就少留一个没验证过的变量。
+文件名**就是**导入后快捷指令的名称：保持 `Send Token to TV.shortcut`，否则分享面板里的名字会变
+（工作流 plist 本身不存名字）。
 
-快捷指令名称：**Send Token to TV**。分享面板里显示的就是这个名字。
+在那台要运行它的 iPhone 上搭建。这些动作是跨平台的，Mac 的「快捷指令」也能做出同样的文件
+（第一版草稿就是它生成的），但 Mac 没有「在网页上运行 JavaScript」这个动作，所以 JavaScript 步骤
+必须直接写进 plist（标识符 `is.workflow.actions.runjavascriptonwebpage`），或者在 iOS 上补加。
 
 动作按顺序：
 
-1. **文本** —— 重命名为 `TV address`；内容 `http://<TV_IP>:8080`，即电视设置页上显示的地址，
+1. **在网页上运行 JavaScript** —— 输出重命名为 `Token`；输入为「快捷指令输入」（即 Safari 网页）；
+   脚本见下。放在第一位：第一个动作默认接收分享进来的网页。
+2. **文本** —— 重命名为 `TV address`；内容 `http://<TV_IP>:8080`，即电视设置页上显示的地址，
    末尾不要斜杠。这是导入后唯一需要用户编辑的动作：签名约束的是导入，不是导入后的修改。
-2. **在网页上运行 JavaScript** —— 输出重命名为 `Token`；输入为「快捷指令输入」（即 Safari 网页）；
-   脚本见下。
 3. **如果** `Token` **有任何值**
    1. **获取 URL 内容** —— URL：`TV address` + `/set-token`；方法 `POST`；
       请求体 `表单`；一个字段 `mut` = `Token`。
    2. **获取 URL 内容** —— URL：`TV address` + `/status`；方法 `GET`。
-   3. **从输入获取字典** —— 输入 `URL 内容`。
-   4. **获取字典值** —— 键 `hasMUT` 的 `值`，来源 `字典`。
-   5. **如果** `字典值` **为真**
+   3. **从输入中获取文本** —— 输入 `URL 内容`；输出 `Status text`。
+   4. **如果** `Status text` **包含** `"hasMUT":true`
       - **显示通知** —— 标题 `Apple Music TV`；正文 `Token received — the TV can now play your library.`
       - **否则** → **显示通知** —— 标题 `Apple Music TV`；正文 `The TV answered but did not keep the
         token. Run it again, or paste the token on the TV's setup page.`
@@ -76,6 +77,15 @@ Token 为空的分支在 POST **之前**，所以空值永远不会被写进去�
 
 让动作引用变量的方式：点参数栏 → 从「选择变量」里选对应动作。第 1、2 步重命名动作，就是为了让变量名
 不会混淆。
+
+### 为什么状态检查用文本匹配
+
+用 `获取字典值` 读 `hasMUT` 看似更直接，但它的输出是通用类型，编辑器只提供「有任何值」类条件 ——
+手工构造的「为真」条件导入后会变成未解析（「请为每个参数选取值」）。把布尔值转成文本也不行：
+转换结果会本地化，英文是 `true`，中文是 `是`，用字面量 `true` 比较会静默走失败分支。这两点都是在
+搭这一版时实测到的。`GET /status` 返回的 `{"hasMUT":true,…}` 不含空格
+（`InAppWebServer.status()`），所以用响应文本包含 `"hasMUT":true` 来判断，既不依赖语言也确定。
+这是一个格式依赖：如果那段 JSON 将来加了空格，这个条件必须一起改。
 
 ### 页面脚本
 
@@ -100,7 +110,7 @@ completion(token);
 
 快捷指令没有 try/catch，`获取 URL 内容` 连接失败会直接中止整个指令。所以「电视不可达」是 iOS 自己的
 **Could not connect to the server** 弹窗，不是我们发的通知 —— 它与上面两条通知都不同，而且发生在
-读取 `/status` 之前。用户该检查 Wi-Fi、电视 app 是否在运行、以及第 1 个动作里的地址。
+读取 `/status` 之前。用户该检查 Wi-Fi、电视 app 是否在运行、以及第 2 个动作（`TV address`）里的地址。
 不要用「把 Token 放进 URL」来"修"这一点：不把 Token 放进 URL 是这套设计的硬要求
 （[#10](https://github.com/AK9810/apple-music-tv/issues/10)）。
 
@@ -108,7 +118,7 @@ completion(token);
 
 1. 在快捷指令编辑器里点顶部名称旁的下箭头 → **导出文件** → 存到「文件」或 AirDrop 过来。
    不要用 *iCloud 链接*：那是发布一份副本，而不是给我们文件。
-2. 把导出文件放到 `shortcut/source/apple-music-tv-token.shortcut`。
+2. 把导出文件放到 `shortcut/source/Send Token to TV.shortcut`。
 3. `./shortcut/sign.sh` —— 执行 `shortcuts sign -m anyone`，不是 AEA1 容器就报错，并打印两个
    SHA-256。
 4. 在真实 iPhone 上：删掉本地未签名副本，从「文件」或 AirDrop 导入签名产物，在 Safari 里已登录的
