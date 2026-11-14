@@ -7,7 +7,8 @@
 Media-User-Token（MUT），再通过局域网把 Token 交接给电视。不需要 iOS app，不需要 Xcode，
 也不需要开发者账号 —— 为什么这样选见
 [ADR-0002](adr/0002-ios-shortcut-instead-of-an-app.md)。这份指南覆盖从一台全新的
-iPhone 或 iPad 到完成录入、资料库歌曲开始播放的全过程。
+iPhone 或 iPad 到完成录入、资料库歌曲开始播放的全过程。电视上的 8080 设置页面是英文的，
+本指南引用的就是页面上的英文标签。
 
 ## 开始之前：三个前置条件
 

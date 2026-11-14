@@ -8,7 +8,8 @@ from your own signed-in Safari session on `music.apple.com` and hands it to the 
 over the local network. There is no iOS app, no Xcode and no developer account —
 why this route was chosen is in
 [ADR-0002](adr/0002-ios-shortcut-instead-of-an-app.md). This guide takes a fresh
-iPhone or iPad to a playing library song.
+iPhone or iPad to a playing library song. The TV's port-8080 setup page itself is
+in English, and this guide quotes its labels exactly.
 
 ## Before you start: the three prerequisites
 
