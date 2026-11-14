@@ -14,8 +14,9 @@ package com.applemusicktv.util
  * turns spaces into `+`, naming the imported shortcut `Send+Token+to+TV`.
  * Both are pinned in `ShortcutDistributionTest`.
  *
- * Dots are encoded as `%2E` too, so the whole inner URL visibly went through the
- * encoder; `%2E` and `.` are equivalent after the Shortcuts app decodes it.
+ * Encoding covers exactly the RFC 3986 unreserved set — `A-Z a-z 0-9 - . _ ~`
+ * stay raw — so the inner URL keeps its dots (`github.com`, not `github%2Ecom`)
+ * and reads in the ordinary percent-encoded form.
  *
  * Deliberately free of Android imports: plain Kotlin, testable on the JVM.
  */
@@ -36,14 +37,16 @@ object ShortcutDistribution {
     fun importDeepLinkHtml(): String = importDeepLink().replace("&", "&amp;")
 
     /**
-     * Percent-encodes [value] over its UTF-8 bytes, leaving only alphanumerics,
-     * `-`, `_` and `~` unescaped. Spaces become `%20`, never `+`.
+     * Percent-encodes [value] over its UTF-8 bytes, leaving the RFC 3986
+     * unreserved set — `A-Z a-z 0-9 - . _ ~` — unescaped. Spaces become `%20`,
+     * never `+`.
      */
     private fun percentEncode(value: String): String = buildString {
         for (byte in value.toByteArray(Charsets.UTF_8)) {
             val c = byte.toInt() and 0xFF
             val unreserved = c in 'A'.code..'Z'.code || c in 'a'.code..'z'.code ||
-                c in '0'.code..'9'.code || c == '-'.code || c == '_'.code || c == '~'.code
+                c in '0'.code..'9'.code || c == '-'.code || c == '.'.code ||
+                c == '_'.code || c == '~'.code
             if (unreserved) {
                 append(c.toChar())
             } else {
