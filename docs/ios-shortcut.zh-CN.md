@@ -38,8 +38,9 @@ iPhone 或 iPad 到完成录入、资料库歌曲开始播放的全过程。电�
 3. 点 **添加** 完成。iOS 总会要求这一次确认，页面无法跳过：看到预览并不代表安装失败，
    只是在等这一下。
 
-iOS 不接受 `http://` 的导入目标，所以一键链接指向 https 上的发布资产。它与电视提供的是
-同一份签名文件。
+iOS 不接受 `http://` 的导入目标，所以一键链接指向 https 上的副本。这份副本还必须**直达**：
+GitHub 的 release 下载会先回一个跳转，快捷指令的导入无法跟随跳转 —— 手机上就显示「导入失败」。
+因此链接改用钉在签名产物所在 commit 上的 raw 文件。它与电视提供的是同一份签名文件。
 
 ### 离线：从电视下载
 
@@ -84,6 +85,7 @@ iOS 不接受 `http://` 的导入目标，所以一键链接指向 https 上的�
 
 | 现象 | 含义与处理 |
 | --- | --- |
+| 点 **安装快捷指令** 后「快捷指令」提示 **导入失败**。 | https 副本取不到 —— 通常是跳转、主机不可达或需要登录的公共网络，不是签名坏了。改用同一张卡片里的 **从电视下载快捷指令**：字节完全相同，走「文件」导入即可。 |
 | `No token on this page. Sign in at music.apple.com in Safari, then run this Shortcut from that page share sheet.` | 没有签入，或页面上没有 `media-user-token` 这个 Cookie。**在 Safari 中**签入 `music.apple.com`，留在该页面，再从它的分享面板运行快捷指令。 |
 | 快捷指令停在「在网页上运行 JavaScript」（`Run JavaScript on Web Page`）动作并报错；没有任何通知。 | **允许运行脚本**关着。设置 → 快捷指令 → 高级 → 允许运行脚本 = 开，然后重新运行。 |
 | Safari 分享面板里没有 **Send Token to TV**，或运行以「页面上没有 Token」的通知结束。 | **分享面板可用**关着，或快捷指令是从「快捷指令」app 运行的，或页面开在 Chrome / Firefox 里。把「在分享表单中显示」设为开（接收 Safari 网页），在 Safari 中打开页面并从那里分享 —— Chrome 和 Firefox 不会把页面交给这个动作。 |

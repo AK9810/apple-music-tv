@@ -48,7 +48,11 @@ a normal prompt, not a prerequisite.
    waiting for that tap.
 
 iOS refuses `http://` targets for import links, which is why the one-tap link
-points at the https release asset. It is the same signed file the TV serves.
+points at an https copy. That copy must also answer **directly**: GitHub's
+release downloads reply with a redirect, and the Shortcuts import cannot follow
+it — the phone reports *Import Failed*. The link therefore uses the raw file
+pinned to the commit that finalized the signed artifact. It is the same signed
+file the TV serves.
 
 ### Offline: download from the TV
 
@@ -100,6 +104,7 @@ also makes the TV look signed in, so confirm the library and play a song.
 
 | Symptom | What it means and what to do |
 | --- | --- |
+| Tap **Install the Shortcut** and the Shortcuts app shows **Import Failed**. | The https copy could not be fetched — a redirect, an unreachable host, or a captive network, not a bad signature. Use **Download the Shortcut from this TV** in the same card: the bytes are identical and the Files import path works. |
 | `No token on this page. Sign in at music.apple.com in Safari, then run this Shortcut from that page share sheet.` | Not signed in, or the page carries no `media-user-token` cookie. Sign in at `music.apple.com` **in Safari**, stay on that page, and run the Shortcut from its share sheet. |
 | The Shortcut stops at the JavaScript step (`Run JavaScript on Web Page`) with an error; no notification appears. | **Allow Running Scripts** is off. Settings → Shortcuts → Advanced → Allow Running Scripts = on, then run again. |
 | **Send Token to TV** is missing from Safari's share sheet, or the run ends with the no-token notification. | **Share-sheet availability** is off, the Shortcut was run from the Shortcuts app, or the page is in Chrome / Firefox. Set Show in Share Sheet = on for Safari web pages, open the page in Safari, and share from there — Chrome and Firefox do not hand the page to the action. |

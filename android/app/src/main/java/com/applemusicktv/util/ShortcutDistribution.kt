@@ -18,25 +18,25 @@ package com.applemusicktv.util
  * stay raw — so the inner URL keeps its dots (`github.com`, not `github%2Ecom`)
  * and reads in the ordinary percent-encoded form.
  *
- * [HTTPS_URL] is deliberately pinned to the v1.7 release instead of
- * `releases/latest`. The Shortcut is verified once, not rebuilt on every
- * release: that asset is immutable and its `sha256` is recorded in
- * `shortcut/VERIFICATION.md`, so the link keeps resolving to the exact bytes a
- * real phone accepted. A `latest` link would follow whichever release happens to
- * be newest and break silently if that release does not carry the Shortcut. This
- * is the deliberate exception to CLAUDE.md's version-agnostic APK-download rule —
- * that rule exists because the APK is built for every release; this is not the
- * APK.
+ * [HTTPS_URL] is a **raw** URL pinned to the commit that finalized the signed artifact, not
+ * a `releases/download/...` asset. GitHub answers a release download with a 302 to a signed
+ * `release-assets.githubusercontent.com` URL; the Shortcuts import handler needs a direct
+ * file and surfaces that redirect on the phone as "Import Failed" (observed on a real
+ * iPhone, 2026-11-14). Raw serves the file with 200 + `application/octet-stream`, and the
+ * commit SHA keeps it as immutable as the release asset was. The pin is deliberate: the
+ * Shortcut is verified once, not rebuilt on every release, and `shortcut/VERIFICATION.md`
+ * records the `sha256` of exactly these bytes.
  *
  * Deliberately free of Android imports: plain Kotlin, testable on the JVM.
  */
 object ShortcutDistribution {
 
-    /** The https copy of `shortcut/Send Token to TV.shortcut` on the v1.7 release. */
+    /** The https copy of `shortcut/Send Token to TV.shortcut`, pinned to a commit. */
     const val HTTPS_URL =
-        "https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-Token-to-TV.shortcut"
+        "https://raw.githubusercontent.com/AK9810/apple-music-tv/" +
+            "68e33888f812b206d8dbf949c959b668eece216a/shortcut/Send%20Token%20to%20TV.shortcut"
 
-    /** The imported shortcut's name. The release asset is hyphenated instead. */
+    /** The imported shortcut's name. The raw path is percent-encoded instead. */
     const val NAME = "Send Token to TV"
 
     /** The import link as a raw URL; the `&` between parameters is not HTML-escaped. */

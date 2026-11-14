@@ -10,6 +10,15 @@ The iPad and the Android companion were verified on the previous build, which
 differs only in the no-token branch and a comment string; the companion path is
 independent of the shortcut file.
 
+The **one-tap import link** is a separate path and was not covered by that
+record. On 2026-11-14 the page was opened on an iPhone and **Install the
+Shortcut** reported *Import Failed*, while **Download the Shortcut from this
+TV** imported and ran with the same bytes. The URL then pointed at the v1.7
+release asset, which answers `302` to signed storage; the import handler needs a
+direct file. The link now uses a raw URL pinned to the signed artifact's commit
+(200, `application/octet-stream`, no redirect). **That path still needs a phone
+retest** — see check 10.
+
 ## Artifact
 
 | Field | Value |
@@ -65,6 +74,7 @@ alternatives observed while building this.
 | 7 | Run on a page with no token (e.g. any non-Apple page in Safari) | "No token on this page."; no `set-token` in the log | **Pass on the final build** — run from `example.com`; the notification appeared and no save followed |
 | 8 | Run with the TV off / wrong address | iOS "Could not connect to the server." | **Observed** — "无法连接服务器" with the TV app closed |
 | 9 | Android companion sign-in, unchanged | Token lands; TV reloads its control page | **Pass** — `[15:02:46.013][OK] Music-User-Token saved (246 chars)`; the companion's native GET hand-off still writes the token |
+| 10 | Tap **Install the Shortcut** on the :8080 page (one-tap import link) | Shortcuts import preview opens; no *Import Failed* alert | **Pending** — the release-asset URL failed on 2026-11-14; retest with the raw pinned-commit URL |
 
 ## Notes
 

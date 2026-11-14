@@ -18,7 +18,7 @@ iPhone / iPad 把 Music-User-Token（MUT）交给电视的通道：一个签名�
 | 路径 | 是什么 |
 | --- | --- |
 | `source/Send Token to TV.shortcut` | 未签名源文件，就是被签名的那份。正常情况下是从「快捷指令」app 导出的文件；当前这份是生成的脚手架，来源记录在 [`VERIFICATION.md`](VERIFICATION.md)。 |
-| `Send Token to TV.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它。同一份字节发布在两处：页面一键 **Install** 按钮用的 https release 资产，以及电视在 `/send-token-to-tv.shortcut` 提供的离线兜底。 |
+| `Send Token to TV.shortcut` | 签名后的产物（AEA1 容器）。手机导入的就是它。同一份字节发布在两处：页面一键 **Install** 按钮用的 https raw 副本，以及电视在 `/send-token-to-tv.shortcut` 提供的离线兜底。 |
 | `sign.sh` | 给 source 签名，并校验 AEA1 文件头。 |
 | `VERIFICATION.md` | 支撑这个产物可以发布的真机验证记录。 |
 
@@ -32,33 +32,38 @@ iOS 不接受 `shortcuts://import-shortcut` 使用 `http://` 目标，只接受 
 
 | 副本 | URL | 用途 |
 | --- | --- | --- |
-| https 发布产物 | `https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-Token-to-TV.shortcut` | 主路径：页面上的 **Install the Shortcut** 按钮，经 `shortcuts://import-shortcut?url=…&name=Send%20Token%20to%20TV`。 |
+| https raw 副本 | `https://raw.githubusercontent.com/AK9810/apple-music-tv/68e33888f812b206d8dbf949c959b668eece216a/shortcut/Send%20Token%20to%20TV.shortcut` | 主路径：页面上的 **Install the Shortcut** 按钮，经 `shortcuts://import-shortcut?url=…&name=Send%20Token%20to%20TV`。 |
 | 电视本地文件 | `http://TV:8080/send-token-to-tv.shortcut` | 离线兜底：下载后用「文件」打开并点 Add。不需要互联网。 |
 
-https 副本挂在现有稳定版 **v1.7** 的 release 上，`sha256` 为
+https 副本是一条**钉在签名产物所在 commit** 上的 raw 链接，`sha256` 为
 `e8dfba9ddf2b5e8dcc5df1ec82ed74500bb00808783dfa0161288c8763814fd8`，
-与电视提供的是同一份字节。故意挂在现有稳定版、不新建 release：新的正式版会接管
-`/releases/latest`（APK 徽章和稳定版更新都会受影响），而没有 `.apk` 的新预发布版
-会成为 beta 通道的第一个结果。
+与电视提供的是同一份字节。
 
-URL 固定在 **v1.7** 这个 tag 上，目的就是锁定这一份已验证的产物：只要 v1.7 还在，链接就一直有效。
-资产名用连字符（`Send-Token-to-TV.shortcut`），但让链接稳定的是 tag 和不可变的资产，不是命名规则。
-电视本地文件的名字 `Send Token to TV.shortcut` 是「文件」导入后快捷指令的名称；一键链接传入
-`&name=Send%20Token%20to%20TV`，让导入的快捷指令名带空格。这条 URL 导入路径还没有在真机上验证：
-[`VERIFICATION.md`](VERIFICATION.md) 记录的是从「文件」导入，不是一键链接。
+它不再是 `releases/download/...` 资产，这是故意的：GitHub 对 release 下载先回 302 跳转到签名存储地址，
+而快捷指令的导入需要**直达文件** —— 跳转到手机上就是 **导入失败**（2026-11-14 真机实测；同一份字节
+从电视本地下载导入正常）。raw 直接返回 `200` 和 `application/octet-stream`，没有跳转。v1.7 的
+release 资产仍留着手动下载用的镜像，但一键链接不再指向它。
+
+用 commit SHA 钉住，和用 tag 一样不可变：重新签名就是新 commit、`ShortcutDistribution.HTTPS_URL`
+换新 SHA、并重新做一次真机检查。
 
 重建后重新发布（只在 `./sign.sh` 和 [`VERIFICATION.md`](VERIFICATION.md) 的真机检查
 都完成之后）：
 
 ```bash
-cp "shortcut/Send Token to TV.shortcut" /tmp/Send-Token-to-TV.shortcut
-gh release upload v1.7 /tmp/Send-Token-to-TV.shortcut --clobber
-curl -sL https://github.com/AK9810/apple-music-tv/releases/download/v1.7/Send-Token-to-TV.shortcut | shasum -a 256
+git add "shortcut/Send Token to TV.shortcut" && git commit -m "sign(shortcut): ..."
+git rev-parse HEAD    # 把 ShortcutDistribution.HTTPS_URL 和它的单测换成这个 SHA
+curl -sSI https://raw.githubusercontent.com/AK9810/apple-music-tv/<sha>/shortcut/Send%20Token%20to%20TV.shortcut   # 必须是 200
+curl -sS  https://raw.githubusercontent.com/AK9810/apple-music-tv/<sha>/shortcut/Send%20Token%20to%20TV.shortcut | shasum -a 256
 ```
 
-`cp` 这一步把文件改成 release 资产名；用这个文件名上传，已发布的 URL 才不变。
-`--clobber` 原位替换现有资产。最后的 `shasum` 必须与 [`VERIFICATION.md`](VERIFICATION.md)
-里的 `Signed sha256` 以及本目录的产物一致。
+最后的 `shasum` 必须与 [`VERIFICATION.md`](VERIFICATION.md) 里的 `Signed sha256` 以及本目录的产物一致。
+release 镜像可以单独刷新，不影响导入链接：
+
+```bash
+cp "shortcut/Send Token to TV.shortcut" /tmp/Send-Token-to-TV.shortcut
+gh release upload v1.7 /tmp/Send-Token-to-TV.shortcut --clobber
+```
 
 两份副本都不含机密。唯一因用户而异的是可编辑的 **Text** 动作里的电视地址；签名约束的是导入，
 不是导入后的修改，所以导入后地址仍可编辑。手机上，一键链接会打开安装预览，iOS 最后仍会要求
