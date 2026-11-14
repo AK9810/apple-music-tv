@@ -4,9 +4,7 @@ Every signed artifact in this directory ships with a real-device record. A clean
 `sign.sh` run is not verification — it only proves the output is an AEA1
 container, not that a phone accepts it or that a TV keeps the token.
 
-**Status: verified on iPhone and iPad (2026-11-14).** One check is still open:
-the Android companion was not re-run on a device (its code is untouched, and the
-GET hand-off it uses parses the same way as before).
+**Status: verified on iPhone, iPad and the Android companion (2026-11-14).**
 
 ## Artifact
 
@@ -47,6 +45,7 @@ alternatives observed while building this.
 | Phone | iPhone 16 Pro, iOS 27.2 |
 | Tablet | iPad Air 7 (2025), iPadOS 26.6.1 |
 | TV | app at `192.168.1.4:8080`; exact model not recorded |
+| Android companion | same LAN; native `GET /set-token` hand-off |
 | TV address used during verification | `http://192.168.1.4:8080` |
 
 ## Checks
@@ -61,7 +60,7 @@ alternatives observed while building this.
 | 6 | Play a library song | Full song, not a 30-second preview | **Pass** — logs show `isFullStream=true` and full durations |
 | 7 | Run with no token on the page | "No token on this page."; no `set-token` in the log | **Observed** when run without a Safari page (from the Shortcuts app); a signed-out Apple page was not separately tested |
 | 8 | Run with the TV off / wrong address | iOS "Could not connect to the server." | **Observed** — "无法连接服务器" with the TV app closed |
-| 9 | Android companion sign-in, unchanged | Token lands; TV reloads its control page | **Not re-run**; companion code untouched |
+| 9 | Android companion sign-in, unchanged | Token lands; TV reloads its control page | **Pass** — `[15:02:46.013][OK] Music-User-Token saved (246 chars)`; the companion's native GET hand-off still writes the token |
 
 ## Notes
 
