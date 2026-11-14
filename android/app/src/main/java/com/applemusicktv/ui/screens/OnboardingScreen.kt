@@ -12,6 +12,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import android.view.inputmethod.InputMethodManager
@@ -186,6 +187,7 @@ private fun StepLanguage(vm: OnboardingViewModel, s: com.applemusicktv.ui.viewmo
     }
 }
 
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun StepAccount(
     vm: OnboardingViewModel,
@@ -193,71 +195,114 @@ private fun StepAccount(
 ) {
     StepHeader(stringResource(R.string.onboarding_sign_in_title), stringResource(R.string.onboarding_sign_in_sub))
 
-    Row(Modifier.padding(top = 22.dp), verticalAlignment = Alignment.Top) {
-        Column(Modifier.weight(1f)) {
-            // The address both methods share: the phone browser opens it, the companion
-            // app asks for it verbatim.
-            Text(
-                s.phoneUrl.ifEmpty { stringResource(R.string.onboarding_web_starting) },
-                fontSize = 28.sp, fontWeight = FontWeight.Bold,
-                color = Color.White, fontFamily = FontFamily.Monospace,
-            )
-            Spacer(Modifier.height(20.dp))
-            // Two ways to get the token across, original first: browser + paste, then the
-            // companion app that signs in on the phone and delivers by itself.
-            Text(stringResource(R.string.signin_method1_title), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Spacer(Modifier.height(4.dp))
-            Text(stringResource(R.string.signin_method1_body), fontSize = 13.sp, color = Color(0xFF999999))
-            Spacer(Modifier.height(14.dp))
-            Text(stringResource(R.string.signin_method2_title), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF6BCB77))
-            Spacer(Modifier.height(4.dp))
-            Text(stringResource(R.string.signin_method2_body), fontSize = 13.sp, color = Color(0xFF999999))
-            // iPhone and iPad have no Chrome DevTools, but this screen cannot tell what phone
-            // is scanning. Point iOS users at the upper QR: the page it opens detects them and
-            // shows the Shortcut route instead.
-            Text(
-                stringResource(R.string.signin_ios_hint),
-                fontSize = 13.sp, color = Color(0xFF999999),
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            // No scanner handy? The intranet address, spelled out — same URL the QR encodes.
-            if (s.phoneUrl.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Text(stringResource(R.string.signin_method2_url_hint), fontSize = 13.sp, color = Color(0xFF999999))
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    s.phoneUrl + "/companion.apk",
-                    fontSize = 13.sp, color = Color(0xFF6BCB77), fontFamily = FontFamily.Monospace,
-                )
+    // One tab per intake method. The previous screen stacked all three methods and two QRs
+    // in one column and overflowed the 1080p content box by ~50dp (the bottom was clipped),
+    // so each method gets its own tab with one QR and one sentence. The full walkthrough
+    // lives on the :8080 page — this screen only has to get the phone to the right URL.
+    var tab by remember { mutableStateOf(0) }
+
+    Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        SignInTab(stringResource(R.string.signin_tab_browser), tab == 0) { tab = 0 }
+        SignInTab(stringResource(R.string.signin_tab_companion), tab == 1) { tab = 1 }
+        SignInTab(stringResource(R.string.signin_tab_ios), tab == 2) { tab = 2 }
+    }
+
+    // Same QR size as before, but only one on screen; the iOS code opens the page with its
+    // own hint so an iPad whose UA says Macintosh still lands on the Shortcut instructions.
+    val qrUrl = when (tab) {
+        1 -> s.phoneUrl + "/companion.apk"
+        2 -> s.phoneUrl + "/?ios=1"
+        else -> s.phoneUrl
+    }
+    Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.Top) {
+        Column(Modifier.weight(1f).padding(end = 20.dp)) {
+            when (tab) {
+                0 -> {
+                    Text(
+                        s.phoneUrl.ifEmpty { stringResource(R.string.onboarding_web_starting) },
+                        fontSize = 26.sp, fontWeight = FontWeight.Bold,
+                        color = Color.White, fontFamily = FontFamily.Monospace,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.signin_browser_note), fontSize = 13.sp, color = Color(0xFF999999))
+                }
+                1 -> {
+                    Text(stringResource(R.string.signin_companion_note), fontSize = 13.sp, color = Color(0xFF999999))
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        s.phoneUrl + "/companion.apk",
+                        fontSize = 13.sp, color = Color(0xFF6BCB77), fontFamily = FontFamily.Monospace,
+                    )
+                }
+                else -> {
+                    Text(stringResource(R.string.signin_ios_note), fontSize = 13.sp, color = Color(0xFF999999))
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        s.phoneUrl + "/?ios=1",
+                        fontSize = 13.sp, color = Color(0xFF6BCB77), fontFamily = FontFamily.Monospace,
+                    )
+                }
             }
-            Spacer(Modifier.height(20.dp))
-            Text(
-                when {
-                    s.hasMut && s.tokenPresetOnEntry -> stringResource(R.string.onboarding_token_preset)
-                    s.hasMut -> stringResource(R.string.onboarding_token_received)
-                    else -> stringResource(R.string.onboarding_token_waiting)
-                },
-                fontSize = 14.sp,
-                color = if (s.hasMut) Color(0xFF6BCB77) else Color(0xFF666666),
-            )
-            Spacer(Modifier.height(18.dp))
-            Text(stringResource(R.string.onboarding_no_token_note), fontSize = 12.sp, color = Color(0xFF555555))
         }
 
-        // Two QRs, one per method: the :8080 page to paste on, and the companion APK that
-        // the TV itself serves (GET /companion.apk) — the install never leaves the LAN.
         if (s.phoneUrl.isNotEmpty()) {
-            Column(
-                modifier = Modifier.padding(start = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                OnbQr(s.phoneUrl, 150.dp)
-                Text(stringResource(R.string.signin_qr_page), fontSize = 11.sp, color = Color(0xFF888888), modifier = Modifier.padding(top = 6.dp))
-                Spacer(Modifier.height(12.dp))
-                OnbQr(s.phoneUrl + "/companion.apk", 150.dp)
-                Text(stringResource(R.string.signin_qr_apk), fontSize = 11.sp, color = Color(0xFF888888), modifier = Modifier.padding(top = 6.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                OnbQr(qrUrl, 150.dp)
+                Text(
+                    stringResource(
+                        when (tab) {
+                            1 -> R.string.signin_qr_apk
+                            2 -> R.string.signin_qr_ios
+                            else -> R.string.signin_qr_page
+                        }
+                    ),
+                    fontSize = 11.sp, color = Color(0xFF888888), modifier = Modifier.padding(top = 6.dp),
+                )
             }
         }
+    }
+
+    // Shared by every tab: the hand-off lands no matter which method was used, and step 2
+    // advances on its own when it does.
+    Spacer(Modifier.height(12.dp))
+    Text(
+        when {
+            s.hasMut && s.tokenPresetOnEntry -> stringResource(R.string.onboarding_token_preset)
+            s.hasMut -> stringResource(R.string.onboarding_token_received)
+            else -> stringResource(R.string.onboarding_token_waiting)
+        },
+        fontSize = 14.sp,
+        color = if (s.hasMut) Color(0xFF6BCB77) else Color(0xFF666666),
+    )
+    Spacer(Modifier.height(6.dp))
+    Text(stringResource(R.string.onboarding_no_token_note), fontSize = 12.sp, color = Color(0xFF555555))
+}
+
+/**
+ * One sign-in method pill. Focus selects the tab: three options are cheap to browse with
+ * left/right, and requiring Enter would add a press to every look at another method.
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun SignInTab(label: String, selected: Boolean, onSelect: () -> Unit) {
+    val noBorder = Border(BorderStroke(0.dp, Color.Transparent))
+    Surface(
+        onClick = onSelect,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (selected) Color(0xFFFA233B) else Color(0xFF151515),
+            focusedContainerColor = if (selected) Color(0xFFFF3B50) else Color(0xFF2E2E2E),
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.03f),
+        border = ClickableSurfaceDefaults.border(border = noBorder, focusedBorder = noBorder),
+        modifier = Modifier.onFocusChanged { if (it.isFocused && !selected) onSelect() },
+    ) {
+        Text(
+            label,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp),
+            fontSize = 14.sp, fontWeight = FontWeight.Medium,
+            color = if (selected) Color.White else Color(0xFF999999),
+        )
     }
 }
 
